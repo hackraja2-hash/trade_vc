@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — NSE / BSE</title>
+  <link href="style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    .preset-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px 0}
+    .preset-row label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:700}
+    .preset-row select{min-width:220px;height:36px}
+    .exchange-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .exchange-status{font-size:13px;color:var(--muted);font-weight:600}
+    .exchange-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .exchange-chart-card{min-height:450px;padding:12px;display:flex;flex-direction:column}
+    .exchange-chart-card h4{margin:0 0 8px 0;font-size:16px}
+    .exchange-chart-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end;margin:0 0 8px 0}
+    .exchange-chart-controls label{display:grid;gap:4px;font-size:13px;color:var(--muted);font-weight:700}
+    .exchange-chart-type-hint{font-size:11px;color:var(--muted);font-weight:600;line-height:1.2}
+    .exchange-chart-controls select,.exchange-chart-controls input[type="color"]{height:36px}
+    .exchange-chart-controls button{height:36px}
+    .exchange-chart-msg{font-size:13px;color:#b45309;min-height:18px;margin:2px 0 8px 0;font-weight:600}
+    .exchange-chart-msg.ok{color:#15803d}
+    .exchange-chart-surface{position:relative;flex:1;min-height:260px;border:1px solid rgba(15,23,42,0.10);border-radius:12px;padding:8px;background:#fff}
+    .exchange-chart-surface canvas{width:100% !important;height:100% !important;min-height:240px !important}
+    .exchange-chart-plotly{width:100%;height:100%;min-height:240px;display:none}
+    .exchange-chart-card.expanded{position:fixed;inset:20px;z-index:1200;overflow:auto;box-shadow:0 20px 60px rgba(15,23,42,0.35);background:#fff}
+    .exchange-chart-card.expanded .exchange-chart-surface{min-height:520px}
+    @media (max-width:900px){
+      .exchange-chart-grid{grid-template-columns:1fr}
+      .exchange-chart-card{min-height:405px}
+      .exchange-chart-surface{min-height:220px}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-inline"><div class="logo">ST</div><span>SmartTrade</span></div>
+    <ul class="nav">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a class="active" href="nse-bse.html">NSE/BSE</a></li>
+      <li><a href="buy-strategy.html">Buy Strategy</a></li>
+      <li><a href="sell-strategy.html">Sell Strategy</a></li>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a href="admin.html">Admin</a></li>
+      <li><a href="superadmin.html">Superadmin</a></li>
+    </ul>
+    <div class="actions"><span id="userLabel">sa</span> <button id="logoutBtn" class="ghost">Logout</button></div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h2>Exchange Data</h2>
+      <p class="muted">Real-time tickers, indices and sector heatmap (placeholder).</p>
+    </section>
+
+    <section class="card">
+      <h3>Search Stocks</h3>
+      <input class="full" placeholder="Search by symbol or company name">
+    </section>
+
+    <section class="grid-2">
+      <section class="card wide">
+        <h3>NSE Live Tickers</h3>
+        <div id="nseTickerBox" class="placeholder">Loading live ticker table…</div>
+      </section>
+
+      <section class="card wide">
+        <h3>BSE Live Tickers</h3>
+        <div id="bseTickerBox" class="placeholder">Loading live ticker table…</div>
+      </section>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="exchange-toolbar">
+        <h3 style="margin:0">Exchange Charts (2D / 3D / Stock / Heatmap)</h3>
+        <div class="row" style="gap:8px;align-items:center">
+          <span id="exchangeStatus" class="exchange-status">Loading data…</span>
+          <button id="refreshExchangeChartsBtn" class="ghost small" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="preset-row">
+        <label>Starter Template
+          <select id="exchangePresetSelect">
+            <option value="pro_trader">Pro Trader</option>
+            <option value="risk_manager">Risk Manager</option>
+            <option value="portfolio_review">Portfolio Review</option>
+          </select>
+        </label>
+        <button id="applyExchangePresetBtn" class="ghost small" type="button">Apply Template</button>
+        <button id="saveExchangePresetBtn" class="ghost small" type="button">Save Custom Template</button>
+      </div>
+      <div class="exchange-chart-grid">
+        <article class="card exchange-chart-card"><h4>Price by Symbol</h4><canvas id="exchangeChartPrice"></canvas></article>
+        <article class="card exchange-chart-card"><h4>Change % by Symbol</h4><canvas id="exchangeChartChange"></canvas></article>
+        <article class="card exchange-chart-card"><h4>Intraday Trend</h4><canvas id="exchangeChartTrend"></canvas></article>
+        <article class="card exchange-chart-card"><h4>Volume Profile</h4><canvas id="exchangeChartVolume"></canvas></article>
+        <article class="card exchange-chart-card"><h4>Volatility Index</h4><canvas id="exchangeChartVolatility"></canvas></article>
+        <article class="card exchange-chart-card"><h4>Market Breadth</h4><canvas id="exchangeChartBreadth"></canvas></article>
+      </div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+  <script>
+    const exchangeChartRefs = {};
+    const exchangeChartPrefs = {};
+    let exchangeDataset = {};
+
+    const EXCHANGE_CATEGORIES = [
+      { value: '2d', label: '2D' },
+      { value: '3d', label: '3D' },
+      { value: 'stock', label: 'Stock Market' },
+      { value: 'heatmap', label: 'Heatmap' },
+      { value: 'decision', label: 'Decision / What-If' }
+    ];
+
+    const EXCHANGE_TYPES_BY_CATEGORY = {
+      '2d': [
+        { value: 'line', label: 'Line' },
+        { value: 'area', label: 'Area' },
+        { value: 'bar', label: 'Bar' },
+        { value: 'scatter', label: 'Scatter' },
+        { value: 'bubble', label: 'Bubble' },
+        { value: 'pie', label: 'Pie' },
+        { value: 'doughnut', label: 'Doughnut' },
+        { value: 'radar', label: 'Radar' },
+        { value: 'polar_area', label: 'Polar Area' }
+      ],
+      '3d': [
+        { value: 'surface3d', label: 'Surface 3D' },
+        { value: 'scatter3d', label: 'Scatter 3D' },
+        { value: 'mesh3d', label: 'Mesh 3D' },
+        { value: 'line3d', label: 'Line 3D' },
+        { value: 'bar3d', label: 'Bar 3D' }
+      ],
+      'stock': [
+        { value: 'line', label: 'Line' },
+        { value: 'candlestick_like', label: 'Candlestick (Like)' },
+        { value: 'waterfall_like', label: 'Waterfall (Like)' },
+        { value: 'volume_combo', label: 'Volume Combo' },
+        { value: 'macd_like', label: 'MACD (Like)' }
+      ],
+      'heatmap': [
+        { value: 'heatmap', label: 'Heat Map' },
+        { value: 'contour', label: 'Contour' }
+      ]
+    };
+
+    function getModernTypesForCategory(category){
+      if(window.SmartTradeCharts && window.SmartTradeCharts.getModernGraphTypesForCategory){
+        const list = window.SmartTradeCharts.getModernGraphTypesForCategory(category);
+        if(Array.isArray(list) && list.length) return list;
+      }
+      return EXCHANGE_TYPES_BY_CATEGORY[category] || [];
+    }
+
+    function parseModernType(typeValue){
+      if(window.SmartTradeCharts && window.SmartTradeCharts.parseModernGraphType){
+        return window.SmartTradeCharts.parseModernGraphType(typeValue);
+      }
+      return { raw: typeValue, base: typeValue, variant: 'classic' };
+    }
+
+    const EXCHANGE_CHART_DEFS = {
+      exchangeChartPrice: { dataKey: 'priceBySymbol', defaultCategory: '2d', defaultType: 'line__institutional', allowedBase: ['line','area','bar'] },
+      exchangeChartChange: { dataKey: 'changeBySymbol', defaultCategory: '2d', defaultType: 'bar__institutional', allowedBase: ['bar','line','waterfall_like'] },
+      exchangeChartTrend: { dataKey: 'intradayTrend', defaultCategory: '2d', defaultType: 'line__institutional', allowedBase: ['line','area','spline'] },
+      exchangeChartVolume: { dataKey: 'volumeProfile', defaultCategory: '2d', defaultType: 'bar__institutional', allowedBase: ['bar','grouped_bar','stacked_bar'] },
+      exchangeChartVolatility: { dataKey: 'volatilityIndex', defaultCategory: '2d', defaultType: 'line__institutional', allowedBase: ['line','area','histogram'] },
+      exchangeChartBreadth: { dataKey: 'marketBreadth', defaultCategory: '2d', defaultType: 'donut__institutional', allowedBase: ['donut','pie','bar'] }
+    };
+
+    const EXCHANGE_PRESETS = {
+      pro_trader: {
+        exchangeChartPrice: { category: '2d', type: 'line__institutional', color: '#4f46e5' },
+        exchangeChartChange: { category: '2d', type: 'bar__institutional', color: '#2563eb' },
+        exchangeChartTrend: { category: '2d', type: 'line__institutional', color: '#06b6d4' },
+        exchangeChartVolume: { category: '2d', type: 'bar__institutional', color: '#0ea5e9' },
+        exchangeChartVolatility: { category: '2d', type: 'line__institutional', color: '#7c3aed' },
+        exchangeChartBreadth: { category: '2d', type: 'donut__institutional', color: '#4f46e5' }
+      },
+      risk_manager: {
+        exchangeChartPrice: { category: '2d', type: 'area__institutional', color: '#dc2626' },
+        exchangeChartChange: { category: '2d', type: 'waterfall_like__institutional', color: '#0ea5e9' },
+        exchangeChartTrend: { category: '2d', type: 'spline__institutional', color: '#6366f1' },
+        exchangeChartVolume: { category: '2d', type: 'stacked_bar__institutional', color: '#ef4444' },
+        exchangeChartVolatility: { category: '2d', type: 'histogram__institutional', color: '#7c3aed' },
+        exchangeChartBreadth: { category: '2d', type: 'bar__institutional', color: '#f97316' }
+      },
+      portfolio_review: {
+        exchangeChartPrice: { category: '2d', type: 'line_closing_price__institutional', color: '#2563eb' },
+        exchangeChartChange: { category: '2d', type: 'bar__institutional', color: '#4f46e5' },
+        exchangeChartTrend: { category: '2d', type: 'area__institutional', color: '#22c55e' },
+        exchangeChartVolume: { category: '2d', type: 'grouped_bar__institutional', color: '#0ea5e9' },
+        exchangeChartVolatility: { category: '2d', type: 'histogram__institutional', color: '#7c3aed' },
+        exchangeChartBreadth: { category: '2d', type: 'donut__institutional', color: '#06b6d4' }
+      }
+    };
+
+    const EXCHANGE_CUSTOM_PRESET_KEY = 'smarttrade_exchange_custom_preset_v1';
+
+    function ensurePresetOption(selectId, value, label){
+      const select = byId(selectId);
+      if(!select) return;
+      if(![...select.options].some((opt) => opt.value === value)){
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    }
+
+    function getStoredExchangeCustomPreset(){
+      try {
+        const raw = localStorage.getItem(EXCHANGE_CUSTOM_PRESET_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function captureExchangeCurrentPreset(){
+      const captured = {};
+      Object.keys(EXCHANGE_CHART_DEFS).forEach((chartId) => {
+        const categoryEl = byId(`${chartId}Category`);
+        const typeEl = byId(`${chartId}Type`);
+        const colorEl = byId(`${chartId}Color`);
+        if(!categoryEl || !typeEl || !colorEl) return;
+        captured[chartId] = {
+          category: categoryEl.value,
+          type: typeEl.value,
+          color: colorEl.value
+        };
+      });
+      return captured;
+    }
+
+    function saveExchangeCustomPreset(){
+      const captured = captureExchangeCurrentPreset();
+      localStorage.setItem(EXCHANGE_CUSTOM_PRESET_KEY, JSON.stringify(captured));
+      ensurePresetOption('exchangePresetSelect', 'custom_saved', 'Custom Saved');
+      byId('exchangePresetSelect').value = 'custom_saved';
+    }
+
+    function applyExchangePreset(presetName){
+      const preset = presetName === 'custom_saved' ? getStoredExchangeCustomPreset() : EXCHANGE_PRESETS[presetName];
+      if(!preset) return;
+      Object.entries(preset).forEach(([chartId, cfg]) => {
+        if(!EXCHANGE_CHART_DEFS[chartId]) return;
+        const categoryEl = byId(`${chartId}Category`);
+        const typeEl = byId(`${chartId}Type`);
+        const colorEl = byId(`${chartId}Color`);
+        if(!categoryEl || !typeEl || !colorEl) return;
+        categoryEl.value = cfg.category;
+        populateTypeOptions(chartId);
+        if([...typeEl.options].some((opt) => opt.value === cfg.type)) typeEl.value = cfg.type;
+        colorEl.value = cfg.color;
+        exchangeChartPrefs[chartId] = { category: cfg.category, type: typeEl.value, color: cfg.color };
+        drawConfiguredChart(chartId);
+      });
+    }
+
+    function byId(id){ return document.getElementById(id); }
+
+    function mapUiTypeToChartJsType(type){
+      const parsed = parseModernType(type);
+      if(parsed.base === 'polar_area') return 'polarArea';
+      if(parsed.base === 'area') return 'line';
+      return parsed.base;
+    }
+
+    function getChartElements(chartId){
+      return { canvas: byId(chartId), plotlyEl: byId(`${chartId}Plotly`) };
+    }
+
+    function setCardRenderMode(chartId, mode){
+      const { canvas, plotlyEl } = getChartElements(chartId);
+      if(!canvas || !plotlyEl) return;
+      if(mode === 'plotly'){
+        canvas.style.display = 'none';
+        plotlyEl.style.display = 'block';
+      } else {
+        plotlyEl.style.display = 'none';
+        canvas.style.display = 'block';
+      }
+    }
+
+    function setExchangeStatus(text){
+      const el = byId('exchangeStatus');
+      if(el) el.textContent = text;
+    }
+
+    function setChartMessage(chartId, message, ok = false){
+      const el = byId(`${chartId}Msg`);
+      if(!el) return;
+      el.textContent = message;
+      el.classList.toggle('ok', Boolean(ok));
+    }
+
+    function destroyChartAndPlotly(chartId){
+      if(exchangeChartRefs[chartId]) exchangeChartRefs[chartId].destroy();
+      const { plotlyEl } = getChartElements(chartId);
+      if(plotlyEl && window.Plotly) Plotly.purge(plotlyEl);
+    }
+
+    function buildFallbackTickers(){
+      return [
+        { symbol: 'INFY', price: 1650.4, change: 1.8 },
+        { symbol: 'TCS', price: 3220.0, change: -0.6 },
+        { symbol: 'RELI', price: 2480.2, change: 0.4 },
+        { symbol: 'HDFCBANK', price: 1562.6, change: 1.1 },
+        { symbol: 'ICICIBANK', price: 1148.7, change: 0.9 },
+        { symbol: 'LT', price: 3685.3, change: -0.2 }
+      ];
+    }
+
+    function buildExchangeDataset(tickers){
+      const symbols = tickers.map((t) => String(t.symbol || '').toUpperCase());
+      const prices = tickers.map((t) => Number(t.price || 0));
+      const changes = tickers.map((t) => Number(t.change || 0));
+      const times = ['09:15','09:45','10:15','10:45','11:15','11:45','12:15','12:45','13:15','13:45','14:15','14:45','15:15'];
+      const base = prices[0] || 1000;
+      const intraday = times.map((_, i) => Number((base + (Math.sin(i / 2) * 18) + (i * 2.2)).toFixed(2)));
+      const volumes = symbols.map((_, i) => Math.max(1000, Math.round((prices[i] || 500) * 1.3 + (i + 1) * 220)));
+      const volatility = symbols.map((_, i) => Number((Math.abs(changes[i] || 0) * 1.7 + ((i % 3) * 0.65) + 0.8).toFixed(2)));
+      const gainers = changes.filter((c) => c >= 0).length;
+      const losers = changes.filter((c) => c < 0).length;
+      const neutral = Math.max(0, symbols.length - gainers - losers);
+
+      return {
+        priceBySymbol: { labels: symbols, values: prices, depth: changes.map((c, i) => Math.abs(c) + (i + 1) * 3) },
+        changeBySymbol: { labels: symbols, values: changes, depth: prices.map((p, i) => (p / 100) + (i + 1)) },
+        intradayTrend: { labels: times, values: intraday, depth: intraday.map((v, i) => (v * 0.015) + i) },
+        volumeProfile: { labels: symbols, values: volumes, depth: prices.map((p) => p / 5) },
+        volatilityIndex: { labels: symbols, values: volatility, depth: changes.map((c, i) => Math.abs(c) * 12 + i) },
+        marketBreadth: { labels: ['Gainers','Losers','Neutral'], values: [gainers, losers, neutral], depth: [gainers * 2, losers * 2, neutral * 2] }
+      };
+    }
+
+    function renderTickerTable(targetId, tickers, title){
+      const el = byId(targetId);
+      if(!el) return;
+      const rows = tickers
+        .map((t) => {
+          const change = Number(t.change || 0);
+          const color = change >= 0 ? '#15803d' : '#b91c1c';
+          return `<tr><td>${String(t.symbol || '-').toUpperCase()}</td><td>₹ ${Number(t.price || 0).toFixed(2)}</td><td style="color:${color};font-weight:700">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td></tr>`;
+        })
+        .join('');
+      el.innerHTML = `<div style="width:100%;overflow:auto"><table style="width:100%;border-collapse:collapse;background:#fff"><thead><tr><th style="text-align:left">${title} Symbol</th><th style="text-align:left">Price</th><th style="text-align:left">Change</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    async function loadExchangeData(){
+      try {
+        setExchangeStatus('Loading live market data…');
+        const response = await fetch('/api/market/ticker');
+        if(!response.ok) throw new Error('API error');
+        const payload = await response.json();
+        const tickers = Array.isArray(payload.tickers) && payload.tickers.length ? payload.tickers : buildFallbackTickers();
+        const enriched = tickers.length < 6 ? [...tickers, ...buildFallbackTickers()].slice(0, 6) : tickers;
+        exchangeDataset = buildExchangeDataset(enriched);
+        renderTickerTable('nseTickerBox', enriched.slice(0, Math.ceil(enriched.length / 2)), 'NSE');
+        renderTickerTable('bseTickerBox', enriched.slice(Math.ceil(enriched.length / 2)), 'BSE');
+        setExchangeStatus('Live data loaded');
+      } catch (_) {
+        const fallback = buildFallbackTickers();
+        exchangeDataset = buildExchangeDataset(fallback);
+        renderTickerTable('nseTickerBox', fallback.slice(0, 3), 'NSE');
+        renderTickerTable('bseTickerBox', fallback.slice(3), 'BSE');
+        setExchangeStatus('Using demo fallback data');
+      }
+    }
+
+    function getExchangeSeries(chartId){
+      const def = EXCHANGE_CHART_DEFS[chartId];
+      const source = exchangeDataset[def?.dataKey] || { labels: ['No Data'], values: [0], depth: [0] };
+      return {
+        labels: source.labels || ['No Data'],
+        values: (source.values || [0]).map((v) => Number(v || 0)),
+        depth: (source.depth || source.values || [0]).map((v) => Number(v || 0))
+      };
+    }
+
+    function getSelectedChartOptions(chartId){
+      const pref = exchangeChartPrefs[chartId] || {};
+      return {
+        category: pref.category || byId(`${chartId}Category`)?.value || EXCHANGE_CHART_DEFS[chartId].defaultCategory || '2d',
+        type: pref.type || byId(`${chartId}Type`)?.value || EXCHANGE_CHART_DEFS[chartId].defaultType,
+        color: pref.color || byId(`${chartId}Color`)?.value || '#4f46e5'
+      };
+    }
+
+    function renderPlotlyCardChart(chartId, opts, labels, values, depth){
+      const { plotlyEl } = getChartElements(chartId);
+      if(!plotlyEl || !window.Plotly) return;
+      const parsedType = parseModernType(opts.type);
+      const baseType = parsedType.base;
+      const variant = parsedType.variant;
+      const x = labels;
+      const y = values;
+      const z = depth.map((v, i) => Math.abs(v) + ((i + 1) * 3));
+      const idx = x.map((_, i) => i + 1);
+      const absY = y.map((v) => Math.abs(v));
+      const color = opts.color || '#4f46e5';
+
+      let data = [];
+      let layout = {
+        title: { text: baseType.replaceAll('_', ' ').toUpperCase(), font: { size: 16 } },
+        margin: { l: 56, r: 20, t: 56, b: 56 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        font: { size: 13, color: '#0f172a' },
+        xaxis: { tickfont: { size: 12 }, automargin: true },
+        yaxis: { tickfont: { size: 12 }, automargin: true }
+      };
+
+      const variantLineWidth = variant === 'institutional' ? 4 : variant === 'pro' ? 3 : 2;
+      const variantMarkerSize = variant === 'institutional' ? 7 : variant === 'pro' ? 6 : 5;
+      const variantOpacity = variant === 'institutional' ? 0.92 : variant === 'pro' ? 0.84 : 0.75;
+
+      const sharedRenderer = window.SmartTradeCharts && window.SmartTradeCharts.renderFinancialPlotly;
+      if(sharedRenderer){
+        const rendered = sharedRenderer({
+          plotlyEl,
+          baseType,
+          variant,
+          labels: x,
+          values: y,
+          depth: z,
+          color,
+          title: baseType.replaceAll('_', ' ').toUpperCase()
+        });
+        if(rendered) return;
+      }
+
+      switch(baseType){
+        case 'surface3d':
+          data = [{ type: 'surface', z: [y, z, y.map((v, i) => (v + z[i]) / 2)], colorscale: 'Viridis' }];
+          layout.scene = { xaxis: { title: 'Index' }, yaxis: { title: 'Series' }, zaxis: { title: 'Value' } };
+          break;
+        case 'scatter3d':
+          data = [{ type: 'scatter3d', mode: 'markers+lines', x: idx, y, z, marker: { size: variantMarkerSize, color: y, colorscale: 'Turbo' }, line: { color, width: variantLineWidth + 1 } }];
+          layout.scene = { xaxis: { title: 'Index' }, yaxis: { title: 'Value' }, zaxis: { title: 'Depth' } };
+          break;
+        case 'mesh3d':
+          data = [{ type: 'mesh3d', x: idx, y, z, intensity: y, opacity: variantOpacity, color }];
+          layout.scene = { xaxis: { title: 'Index' }, yaxis: { title: 'Value' }, zaxis: { title: 'Depth' } };
+          break;
+        case 'line3d':
+          data = [{ type: 'scatter3d', mode: 'lines+markers', x: idx, y, z, line: { color, width: variantLineWidth + 3 }, marker: { size: variantMarkerSize - 1, color: '#06b6d4' } }];
+          layout.scene = { xaxis: { title: 'Index' }, yaxis: { title: 'Value' }, zaxis: { title: 'Depth' } };
+          break;
+        case 'bar3d':
+          data = [{ type: 'scatter3d', mode: 'markers', x: idx, y: idx.map(() => 0), z: absY, marker: { size: variantMarkerSize + 3, symbol: 'square', color } }];
+          layout.scene = { xaxis: { title: 'Index' }, yaxis: { title: 'Base' }, zaxis: { title: 'Height' } };
+          break;
+        case 'heatmap':
+          data = [{ type: 'heatmap', x, y: ['Series A','Series B'], z: [y, z], colorscale: 'Viridis' }];
+          break;
+        case 'contour':
+          data = [{ type: 'contour', x, y: ['Series A','Series B'], z: [y, z], colorscale: 'Portland' }];
+          break;
+        case 'candlestick_like':
+          data = [{ type: 'candlestick', x, open: y.map((v) => v * 0.96), high: y.map((v) => v * 1.08), low: y.map((v) => v * 0.92), close: y }];
+          break;
+        case 'waterfall_like':
+          data = [{ type: 'waterfall', x, y, connector: { line: { color: '#64748b' } }, increasing: { marker: { color } }, decreasing: { marker: { color: '#ef4444' } } }];
+          break;
+        case 'volume_combo':
+          data = [
+            { type: 'bar', x, y: absY.map((v) => Math.round(v * 6)), name: 'Volume', marker: { color: '#06b6d4' } },
+            { type: 'scatter', x, y, mode: 'lines+markers', name: 'Price/P&L', line: { color, width: 3 }, yaxis: 'y2' }
+          ];
+          layout.yaxis = { title: 'Volume' };
+          layout.yaxis2 = { title: 'Price/P&L', overlaying: 'y', side: 'right' };
+          break;
+        case 'macd_like': {
+          const signal = y.map((v, i) => (v + (y[i - 1] || v)) / 2);
+          const hist = y.map((v, i) => v - signal[i]);
+          data = [
+            { type: 'scatter', x, y, mode: 'lines', name: 'MACD', line: { color, width: 3 } },
+            { type: 'scatter', x, y: signal, mode: 'lines', name: 'Signal', line: { color: '#f59e0b', width: 2, dash: 'dot' } },
+            { type: 'bar', x, y: hist, name: 'Histogram', marker: { color: '#22c55e' }, opacity: 0.55 }
+          ];
+          break;
+        }
+        case 'whatif_tree':
+          data = [{ type: 'treemap', labels: ['Base', ...x], parents: ['', ...x.map(() => 'Base')], values: [absY.reduce((a,b)=>a+b,0), ...absY], marker: { colorscale: 'Blues' } }];
+          break;
+        case 'scenario_fan': {
+          const optimistic = y.map((v, i) => v + (i + 1) * 0.8);
+          const pessimistic = y.map((v, i) => v - (i + 1) * 0.8);
+          data = [
+            { type: 'scatter', x, y: optimistic, mode: 'lines', name: 'Optimistic', line: { color: '#16a34a', width: variantLineWidth } },
+            { type: 'scatter', x, y, mode: 'lines', name: 'Base', line: { color, width: variantLineWidth + 1 } },
+            { type: 'scatter', x, y: pessimistic, mode: 'lines', name: 'Pessimistic', line: { color: '#dc2626', width: variantLineWidth } }
+          ];
+          break;
+        }
+        case 'sensitivity_tornado':
+          data = [{ type: 'bar', y: x, x: y.map((v)=>Math.abs(v)), orientation: 'h', marker: { color } }];
+          break;
+        case 'break_even_surface':
+          data = [{ type: 'surface', z: [y, z, y.map((v, i) => (v + z[i]) / 2)], colorscale: 'Electric' }];
+          layout.scene = { xaxis: { title: 'Risk' }, yaxis: { title: 'Return' }, zaxis: { title: 'Break-even' } };
+          break;
+        case 'risk_return_frontier':
+          data = [{ type: 'scatter', mode: 'markers+lines', x: z, y, marker: { size: variantMarkerSize + 2, color: y, colorscale: 'RdYlGn' }, line: { color, width: variantLineWidth }, text: x }];
+          layout.xaxis.title = 'Risk';
+          layout.yaxis.title = 'Expected Return';
+          break;
+        case 'scatter':
+          data = [{ type: 'scatter', x, y, mode: 'markers', marker: { color, size: variantMarkerSize + 3 } }];
+          break;
+        case 'bubble':
+          data = [{ type: 'scatter', x, y, mode: 'markers', marker: { color, size: z.map((v) => Math.max(9, Math.min(26, v))), opacity: variantOpacity } }];
+          break;
+        default:
+          data = [{ type: 'scatter', x, y, mode: 'lines+markers', line: { color, width: variantLineWidth }, marker: { size: variantMarkerSize + 1 } }];
+      }
+
+      Plotly.newPlot(plotlyEl, data, layout, { responsive: true, displayModeBar: true });
+    }
+
+    function drawConfiguredChart(chartId){
+      const { labels, values, depth } = getExchangeSeries(chartId);
+      const opts = getSelectedChartOptions(chartId);
+      const parsedType = parseModernType(opts.type);
+      const normalizedType = parsedType.base;
+      const plotlyTypes = new Set(['surface3d','scatter3d','mesh3d','line3d','bar3d','heatmap','contour','candlestick_like','waterfall_like','volume_combo','macd_like','scatter','bubble','whatif_tree','scenario_fan','sensitivity_tornado','break_even_surface','risk_return_frontier']);
+      const shouldUsePlotly = opts.category === '3d' || opts.category === 'heatmap' || opts.category === 'stock' || opts.category === 'decision' || plotlyTypes.has(normalizedType);
+
+      destroyChartAndPlotly(chartId);
+
+      if(shouldUsePlotly){
+        setCardRenderMode(chartId, 'plotly');
+        renderPlotlyCardChart(chartId, opts, labels, values, depth);
+        setChartMessage(chartId, `Applied ${opts.category.toUpperCase()} • ${normalizedType.replaceAll('_', ' ').toUpperCase()}`, true);
+        return;
+      }
+
+      setCardRenderMode(chartId, 'chartjs');
+      const chartJsType = mapUiTypeToChartJsType(opts.type);
+      const canvas = byId(chartId);
+      if(!canvas) return;
+      exchangeChartRefs[chartId] = new Chart(canvas, {
+        type: chartJsType,
+        data: {
+          labels,
+          datasets: [{
+            label: EXCHANGE_CHART_DEFS[chartId].dataKey,
+            data: values,
+            backgroundColor: ['pie','doughnut','polarArea'].includes(chartJsType)
+              ? [opts.color, '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#7c3aed', '#14b8a6', '#f97316']
+              : opts.color,
+            borderColor: opts.color,
+            borderWidth: 1.2,
+            fill: normalizedType === 'area',
+            tension: 0.28,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 350 },
+          plugins: { legend: { display: true, labels: { font: { size: 13, weight: '700' } } } },
+          scales: ['pie','doughnut','polarArea','radar'].includes(chartJsType)
+            ? {}
+            : {
+              x: { ticks: { font: { size: 12, weight: '600' } } },
+              y: { ticks: { font: { size: 12, weight: '600' } } }
+            }
+        }
+      });
+      setChartMessage(chartId, `Applied 2D • ${normalizedType.replaceAll('_', ' ').toUpperCase()}`, true);
+    }
+
+    function populateTypeOptions(chartId){
+      const categorySel = byId(`${chartId}Category`);
+      const typeSel = byId(`${chartId}Type`);
+      if(!categorySel || !typeSel) return;
+      const def = EXCHANGE_CHART_DEFS[chartId] || {};
+      const category = categorySel.value || '2d';
+      const current = typeSel.value;
+      const allowedBase = new Set(def.allowedBase || []);
+      let options = getModernTypesForCategory(category).filter((opt) => {
+        const parsed = parseModernType(opt.value);
+        return !allowedBase.size || allowedBase.has(parsed.base);
+      });
+      if(!options.length){
+        options = getModernTypesForCategory(def.defaultCategory || '2d').filter((opt) => {
+          const parsed = parseModernType(opt.value);
+          return !allowedBase.size || allowedBase.has(parsed.base);
+        });
+      }
+      if(!options.length && def.defaultType){
+        const parsed = parseModernType(def.defaultType);
+        options = [{ value: def.defaultType, label: `${parsed.base.replaceAll('_', ' ').toUpperCase()} (${parsed.variant.toUpperCase()})` }];
+      }
+      typeSel.innerHTML = '';
+      options.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        typeSel.appendChild(o);
+      });
+      const hint = byId(`${chartId}TypeHint`);
+      if(hint) hint.textContent = `Showing ${options.length} relevant type${options.length === 1 ? '' : 's'}`;
+      if(options.some((o) => o.value === current)) typeSel.value = current;
+      else if(options.some((o) => o.value === def.defaultType)) typeSel.value = def.defaultType;
+      else if(typeSel.options.length) typeSel.selectedIndex = 0;
+    }
+
+    function getAvailableCategoriesForChart(chartId){
+      const def = EXCHANGE_CHART_DEFS[chartId] || {};
+      const allowedBase = new Set(def.allowedBase || []);
+      return EXCHANGE_CATEGORIES.filter((category) => {
+        const options = getModernTypesForCategory(category.value).filter((opt) => {
+          const parsed = parseModernType(opt.value);
+          return !allowedBase.size || allowedBase.has(parsed.base);
+        });
+        return options.length > 0;
+      });
+    }
+
+    function initializeExchangeChartControls(){
+      const cards = Array.from(document.querySelectorAll('.exchange-chart-card'));
+      cards.forEach((card) => {
+        const canvas = card.querySelector('canvas');
+        if(!canvas) return;
+        const chartId = canvas.id;
+        if(!EXCHANGE_CHART_DEFS[chartId]) return;
+
+        const controls = document.createElement('div');
+        controls.className = 'exchange-chart-controls';
+        controls.innerHTML = `
+          <label>Category<select id="${chartId}Category"></select></label>
+          <label>Graph Type<select id="${chartId}Type"></select><small id="${chartId}TypeHint" class="exchange-chart-type-hint"></small></label>
+          <label>Color<input id="${chartId}Color" type="color" value="#4f46e5" /></label>
+          <button id="${chartId}Apply" class="primary small" type="button">Apply</button>
+          <button id="${chartId}Expand" class="ghost small" type="button">Expand</button>
+          <button id="${chartId}CancelExpand" class="ghost small" type="button" style="display:none">Cancel</button>
+        `;
+
+        const msg = document.createElement('div');
+        msg.className = 'exchange-chart-msg';
+        msg.id = `${chartId}Msg`;
+
+        const surface = document.createElement('div');
+        surface.className = 'exchange-chart-surface';
+        const plotlyEl = document.createElement('div');
+        plotlyEl.id = `${chartId}Plotly`;
+        plotlyEl.className = 'exchange-chart-plotly';
+
+        const originalCanvasParent = canvas.parentElement;
+        if(originalCanvasParent) originalCanvasParent.removeChild(canvas);
+        surface.appendChild(canvas);
+        surface.appendChild(plotlyEl);
+
+        const heading = card.querySelector('h4');
+        if(heading) heading.insertAdjacentElement('afterend', controls);
+        else card.prepend(controls);
+        controls.insertAdjacentElement('afterend', msg);
+        msg.insertAdjacentElement('afterend', surface);
+
+        const categorySel = byId(`${chartId}Category`);
+        const availableCategories = getAvailableCategoriesForChart(chartId);
+        availableCategories.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.value;
+          opt.textContent = c.label;
+          categorySel.appendChild(opt);
+        });
+
+        const defaultCategory = EXCHANGE_CHART_DEFS[chartId].defaultCategory || '2d';
+        if([...categorySel.options].some((opt) => opt.value === defaultCategory)) categorySel.value = defaultCategory;
+        else if(categorySel.options.length) categorySel.selectedIndex = 0;
+        populateTypeOptions(chartId);
+        byId(`${chartId}Type`).value = EXCHANGE_CHART_DEFS[chartId].defaultType;
+
+        byId(`${chartId}Category`).addEventListener('change', () => {
+          populateTypeOptions(chartId);
+          exchangeChartPrefs[chartId] = {
+            category: byId(`${chartId}Category`).value,
+            type: byId(`${chartId}Type`).value,
+            color: byId(`${chartId}Color`).value
+          };
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Type`).addEventListener('change', () => {
+          exchangeChartPrefs[chartId] = {
+            category: byId(`${chartId}Category`).value,
+            type: byId(`${chartId}Type`).value,
+            color: byId(`${chartId}Color`).value
+          };
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Color`).addEventListener('input', () => {
+          exchangeChartPrefs[chartId] = {
+            category: byId(`${chartId}Category`).value,
+            type: byId(`${chartId}Type`).value,
+            color: byId(`${chartId}Color`).value
+          };
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Apply`).addEventListener('click', () => {
+          exchangeChartPrefs[chartId] = {
+            category: byId(`${chartId}Category`).value,
+            type: byId(`${chartId}Type`).value,
+            color: byId(`${chartId}Color`).value
+          };
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Expand`).addEventListener('click', () => toggleExchangeChartExpand(chartId, true));
+        byId(`${chartId}CancelExpand`).addEventListener('click', () => toggleExchangeChartExpand(chartId, false));
+      });
+    }
+
+    function toggleExchangeChartExpand(chartId, expanded){
+      const card = byId(chartId)?.closest('.exchange-chart-card');
+      if(!card) return;
+      card.classList.toggle('expanded', Boolean(expanded));
+      const expandBtn = byId(`${chartId}Expand`);
+      const cancelBtn = byId(`${chartId}CancelExpand`);
+      if(expandBtn) expandBtn.style.display = expanded ? 'none' : '';
+      if(cancelBtn) cancelBtn.style.display = expanded ? '' : 'none';
+      setTimeout(() => {
+        if(exchangeChartRefs[chartId]) exchangeChartRefs[chartId].resize();
+        const plotlyEl = byId(`${chartId}Plotly`);
+        if(plotlyEl && plotlyEl.style.display !== 'none' && window.Plotly && Plotly.Plots) Plotly.Plots.resize(plotlyEl);
+      }, 60);
+    }
+
+    function drawAllExchangeCharts(){
+      Object.keys(EXCHANGE_CHART_DEFS).forEach((chartId) => drawConfiguredChart(chartId));
+    }
+
+    async function refreshExchangeDashboard(){
+      await loadExchangeData();
+      drawAllExchangeCharts();
+    }
+
+    window.addEventListener('resize', () => {
+      Object.keys(EXCHANGE_CHART_DEFS).forEach((chartId) => {
+        if(exchangeChartRefs[chartId]) exchangeChartRefs[chartId].resize();
+        const plotlyEl = byId(`${chartId}Plotly`);
+        if(plotlyEl && plotlyEl.style.display !== 'none' && window.Plotly && Plotly.Plots) Plotly.Plots.resize(plotlyEl);
+      });
+    });
+
+    byId('refreshExchangeChartsBtn').addEventListener('click', refreshExchangeDashboard);
+    byId('applyExchangePresetBtn').addEventListener('click', () => applyExchangePreset(byId('exchangePresetSelect').value));
+    byId('saveExchangePresetBtn').addEventListener('click', saveExchangeCustomPreset);
+
+    (async function bootExchangeCharts(){
+      initializeExchangeChartControls();
+      await refreshExchangeDashboard();
+      const customPreset = getStoredExchangeCustomPreset();
+      if(customPreset){
+        ensurePresetOption('exchangePresetSelect', 'custom_saved', 'Custom Saved');
+        byId('exchangePresetSelect').value = 'custom_saved';
+      }
+      applyExchangePreset(byId('exchangePresetSelect').value || 'pro_trader');
+    })();
+  </script>
+</body>
+</html>

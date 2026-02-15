@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Super Admin</title>
+  <link href="style.css" rel="stylesheet">
+</head>
+<body class="superadmin-page">
+  <header class="topbar">
+    <div class="brand-inline"><div class="logo">ST</div><span>SmartTrade</span></div>
+    <ul class="nav">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="nse-bse.html">NSE/BSE</a></li>
+      <li><a href="buy-strategy.html">Buy Strategy</a></li>
+      <li><a href="sell-strategy.html">Sell Strategy</a></li>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a data-role-link="admin" href="admin.html">Admin</a></li>
+      <li><a data-role-link="superadmin" class="active" href="superadmin.html">Superadmin</a></li>
+    </ul>
+    <div class="actions"><span id="userLabel">superadmin</span> <button id="logoutBtn" class="ghost">Logout</button></div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h2>Super Admin</h2>
+      <p class="muted">Database, users, and role access controls.</p>
+    </section>
+
+    <div class="superadmin-sections">
+    <section class="card section-card">
+      <h3>Database Configuration Management</h3>
+      <div id="dbBanner" class="status-banner" style="display:none"></div>
+      <div class="row" style="margin-bottom:12px;justify-content:space-between;flex-wrap:wrap">
+        <div class="row">
+        <button id="tabExisting" class="primary small" type="button">Existing Connection</button>
+        <button id="tabNew" class="ghost small" type="button">New Connection</button>
+        </div>
+        <button id="refreshConnectionsBtn" class="ghost small" type="button">Refresh</button>
+      </div>
+
+      <div id="existingTab">
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <select id="existingConnectionSelect" style="padding:10px;border-radius:10px;min-width:280px"></select>
+          <button id="editConnectionBtn" class="ghost small" type="button">Edit Selected</button>
+          <button id="deleteConnectionBtn" class="ghost small" type="button">Delete</button>
+          <button id="startConnectionBtn" class="primary small" type="button">Start</button>
+          <button id="stopConnectionBtn" class="ghost small" type="button">Stop</button>
+          <button id="activateConnectionBtn" class="primary small" type="button">Activate</button>
+          <span id="connectionStatus" class="muted">Status: -</span>
+        </div>
+        <div id="connectionDetails" class="muted" style="margin-top:10px">-</div>
+        <div style="margin-top:14px">
+          <h4 style="margin:0 0 8px 0">Open Connections</h4>
+          <div id="openConnectionSummary" class="muted" style="margin-bottom:8px">Open: 0 | Active: 0</div>
+          <table id="openConnectionsTable" style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left">Name</th><th>Host</th><th>Database</th><th>Status</th><th>Active</th><th>Updated</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="newTab" style="display:none">
+        <input id="editingConnectionId" type="hidden" />
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <label>Connection Name<input id="dbConnectionName" type="text" /></label>
+          <label style="min-width:180px">DB Type
+            <select id="dbType" style="padding:10px;border-radius:10px">
+              <option value="local">Local</option>
+              <option value="azure">Azure Cloud</option>
+            </select>
+          </label>
+          <label>Authentication
+            <select id="dbAuthType" style="padding:10px;border-radius:10px">
+              <option value="windows">Windows Authentication (current user)</option>
+              <option value="sql">SQL Authentication</option>
+            </select>
+          </label>
+          <label>Host
+            <input id="dbHost" type="text" list="dbHostOptions" style="padding:10px;border-radius:10px;min-width:240px" />
+            <datalist id="dbHostOptions"></datalist>
+          </label>
+          <label>Port<input id="dbPort" type="number" /></label>
+          <label>Database Name<input id="dbName" type="text" /></label>
+          <label id="dbUsernameWrap">Username<input id="dbUsername" type="text" /></label>
+          <label id="dbPasswordWrap">Password<input id="dbPassword" type="password" /></label>
+          <label class="row" style="gap:6px"><input id="dbEncrypt" type="checkbox" />Encrypt connection</label>
+          <button id="testConnectionBtn" class="primary small" type="button">Test Connection</button>
+          <button id="saveConnectionBtn" class="ghost small" type="button">Save Connection</button>
+          <button id="cancelEditBtn" class="ghost small" type="button" style="display:none">Cancel Edit</button>
+          <span id="testStatus" class="muted">-</span>
+        </div>
+        <p class="muted" style="margin-top:8px">Port defaults to 1433 if left empty.</p>
+      </div>
+    </section>
+
+    <section class="card section-card">
+      <h3>User Management</h3>
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <label>Username<input id="newUsername" type="text" /></label>
+        <label>Full Name<input id="newFullName" type="text" /></label>
+        <label>Email<input id="newEmail" type="email" /></label>
+        <label>Phone<input id="newPhone" type="text" /></label>
+        <label>Address<input id="newAddress" type="text" /></label>
+        <label>PAN Card<input id="newPancard" type="text" /></label>
+        <label>Password<input id="newPassword" type="password" /></label>
+        <label>User Type
+          <select id="newUserType" style="padding:10px;border-radius:10px">
+            <option value="normal">normal</option>
+            <option value="admin">admin</option>
+            <option value="superadmin">superadmin</option>
+          </select>
+        </label>
+        <label>Status
+          <select id="newUserStatus" style="padding:10px;border-radius:10px">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label id="normalRoleWrapper">Role assignment
+          <select id="newUserRole" style="padding:10px;border-radius:10px"></select>
+        </label>
+        <button id="createUserBtn" class="primary small" type="button">Create User</button>
+        <span id="userCreateStatus" class="muted"></span>
+      </div>
+
+      <table id="usersTable" style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr><th style="text-align:left">ID</th><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>PAN</th><th>User Type</th><th>Status</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card section-card">
+      <h3>Role Management</h3>
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <label>Role Name<input id="roleName" type="text" /></label>
+        <label class="row" style="gap:6px"><input id="modDashboard" type="checkbox" />Dashboard</label>
+        <label class="row" style="gap:6px"><input id="modStrategyBuilder" type="checkbox" />Strategy Builder</label>
+        <label class="row" style="gap:6px"><input id="modTradeExecution" type="checkbox" />Trade Execution</label>
+        <label class="row" style="gap:6px"><input id="modReports" type="checkbox" />Reports</label>
+        <label class="row" style="gap:6px"><input id="modUserManagement" type="checkbox" />User Management</label>
+        <button id="createRoleBtn" class="primary small" type="button">Create Role</button>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    let cachedConnections = [];
+    let cachedRoles = [];
+    let lastSavedConnectionId = null;
+
+    function byId(id){ return document.getElementById(id); }
+
+    function toErrorText(err){
+      if(err === null || err === undefined) return 'Unknown error';
+      if(typeof err === 'string') return err;
+      if(typeof err.error === 'string') return err.error;
+      if(typeof err.message === 'string') return err.message;
+      try { return JSON.stringify(err); } catch(_) { return 'Unknown error'; }
+    }
+
+    function setDbBanner(type, message){
+      const el = byId('dbBanner');
+      if(!message){
+        el.style.display = 'none';
+        el.textContent = '';
+        el.className = 'status-banner';
+        return;
+      }
+      el.style.display = '';
+      el.textContent = message;
+      el.className = `status-banner ${type === 'error' ? 'status-error' : 'status-success'}`;
+    }
+
+    function resetConnectionForm(){
+      byId('editingConnectionId').value = '';
+      byId('dbConnectionName').value = '';
+      byId('dbType').value = 'local';
+      byId('dbAuthType').value = 'windows';
+      byId('dbPort').value = '1433';
+      byId('dbName').value = 'trade';
+      byId('dbUsername').value = '';
+      byId('dbPassword').value = '';
+      byId('dbEncrypt').checked = false;
+      byId('testStatus').textContent = '-';
+      byId('saveConnectionBtn').textContent = 'Save Connection';
+      byId('cancelEditBtn').style.display = 'none';
+      syncAuthFields();
+    }
+
+    function selectedConnection(){
+      const selectedId = Number(byId('existingConnectionSelect').value);
+      return cachedConnections.find(c => Number(c.id) === selectedId);
+    }
+
+    function safe(v){
+      return (v === null || v === undefined || v === '') ? '-' : String(v);
+    }
+
+    function updateConnectionStatusLabel(){
+      const conn = selectedConnection();
+      if(!conn){
+        byId('connectionStatus').textContent = 'Status: -';
+        byId('connectionDetails').textContent = '-';
+        return;
+      }
+      const activeLabel = conn.is_active ? ' (Active)' : '';
+      byId('connectionStatus').textContent = `Status: ${conn.status || 'stopped'}${activeLabel}`;
+      byId('connectionDetails').textContent = `Host: ${safe(conn.host)} | DB: ${safe(conn.database_name)} | Port: ${safe(conn.port)} | Auth: ${safe(conn.auth_type)} | User: ${safe(conn.username)}`;
+    }
+
+    async function loadOpenConnections(){
+      const r = await apiFetch('/api/db/open');
+      if(!r.ok){ setDbBanner('error', 'Unable to load open connections'); return; }
+      const data = await r.json();
+      byId('openConnectionSummary').textContent = `Open: ${data.open_count || 0} | Active: ${data.active_count || 0}`;
+      const tbody = document.querySelector('#openConnectionsTable tbody');
+      tbody.innerHTML = '';
+      (data.connections || []).forEach(conn => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${safe(conn.connection_name)}</td><td>${safe(conn.host)}</td><td>${safe(conn.database_name)}</td><td>${safe(conn.status)}</td><td>${conn.is_active ? 'Yes' : 'No'}</td><td>${safe(conn.updated_at)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadHostOptions(){
+      const r = await apiFetch('/api/db/discover-hosts');
+      if(!r.ok){ setDbBanner('error', 'Unable to discover SQL hosts'); return; }
+      const data = await r.json();
+      const hostInput = byId('dbHost');
+      const current = hostInput.value;
+      const hostList = byId('dbHostOptions');
+      hostList.innerHTML = '';
+      (data.hosts || []).forEach(host => {
+        const opt = document.createElement('option');
+        opt.value = host;
+        hostList.appendChild(opt);
+      });
+      if(current) hostInput.value = current;
+      else if(data.hosts && data.hosts.length) hostInput.value = data.hosts[0];
+    }
+
+    function syncAuthFields(){
+      const auth = byId('dbAuthType').value;
+      const showSql = auth === 'sql';
+      byId('dbUsernameWrap').style.display = showSql ? '' : 'none';
+      byId('dbPasswordWrap').style.display = showSql ? '' : 'none';
+    }
+
+    async function loadConnectionList(){
+      const r = await apiFetch('/api/db/list');
+      if(!r.ok){ byId('connectionStatus').textContent = 'Status: Failed to load'; setDbBanner('error', 'Unable to load saved connections'); return; }
+      const data = await r.json();
+      cachedConnections = data.connections || [];
+
+      const select = byId('existingConnectionSelect');
+      select.innerHTML = '';
+      cachedConnections.forEach((conn) => {
+        const opt = document.createElement('option');
+        opt.value = conn.id;
+        opt.textContent = `${conn.connection_name} (${conn.db_type}, ${conn.auth_type || 'sql'})`;
+        select.appendChild(opt);
+      });
+
+      const preferred = (lastSavedConnectionId && cachedConnections.find(c => Number(c.id) === Number(lastSavedConnectionId)))
+        || cachedConnections.find(c => c.connection_name === 'local_raja_laptop')
+        || cachedConnections.find(c => c.is_active)
+        || cachedConnections[0];
+      if(preferred) select.value = String(preferred.id);
+      updateConnectionStatusLabel();
+      await loadOpenConnections();
+      setDbBanner('success', 'Connection details loaded');
+    }
+
+    async function runConnectionAction(path){
+      const conn = selectedConnection();
+      if(!conn){ alert('Select a connection'); return; }
+      const r = await apiFetch(path, { method: 'POST', body: JSON.stringify({ id: conn.id }) });
+      if(!r.ok){ setDbBanner('error', 'Connection action failed'); return; }
+      await loadConnectionList();
+      setDbBanner('success', 'Connection action completed');
+    }
+
+    function connectionPayloadFromForm(){
+      return {
+        connection_name: byId('dbConnectionName').value.trim(),
+        db_type: byId('dbType').value,
+        auth_type: byId('dbAuthType').value,
+        host: byId('dbHost').value.trim(),
+        port: byId('dbPort').value.trim() ? Number(byId('dbPort').value) : null,
+        database_name: byId('dbName').value.trim(),
+        username: byId('dbUsername').value.trim(),
+        password: byId('dbPassword').value,
+        encrypt_connection: byId('dbEncrypt').checked
+      };
+    }
+
+    async function testConnection(){
+      const payload = connectionPayloadFromForm();
+      if(!payload.host){ byId('testStatus').textContent = 'Failed: host is required'; setDbBanner('error', 'Host is required'); return; }
+      if(!payload.database_name){ byId('testStatus').textContent = 'Failed: database name is required'; setDbBanner('error', 'Database name is required'); return; }
+      const r = await apiFetch('/api/db/test', { method: 'POST', body: JSON.stringify(payload) });
+      const body = await r.json().catch(() => null);
+      byId('testStatus').textContent = r.ok ? 'Success' : `Failed: ${toErrorText(body)}`;
+      if(r.ok) setDbBanner('success', 'Connection test successful');
+      else setDbBanner('error', `Connection test failed: ${toErrorText(body)}`);
+      byId('dbPassword').value = '';
+    }
+
+    async function saveConnection(){
+      const payload = connectionPayloadFromForm();
+      if(!payload.connection_name){ setDbBanner('error', 'Connection name is required'); return; }
+      if(!payload.host){ setDbBanner('error', 'Host is required'); return; }
+      if(!payload.database_name){ setDbBanner('error', 'Database name is required'); return; }
+      const editingId = byId('editingConnectionId').value;
+      if(editingId) payload.id = Number(editingId);
+
+      const endpoint = editingId ? '/api/db/update' : '/api/db/save';
+      const r = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+      if(!r.ok){
+        const body = await r.json().catch(() => null);
+        setDbBanner('error', toErrorText(body));
+        byId('dbPassword').value = '';
+        return;
+      }
+      const body = await r.json().catch(() => null);
+      lastSavedConnectionId = body && body.id ? Number(body.id) : null;
+      byId('dbPassword').value = '';
+      resetConnectionForm();
+      byId('existingTab').style.display = '';
+      byId('newTab').style.display = 'none';
+      await loadConnectionList();
+      setDbBanner('success', editingId ? 'Connection updated successfully' : 'Connection saved successfully');
+    }
+
+    async function deleteSelectedConnection(){
+      const conn = selectedConnection();
+      if(!conn){ setDbBanner('error', 'Select a connection'); return; }
+      if(!confirm(`Delete connection ${conn.connection_name}?`)) return;
+      const r = await apiFetch('/api/db/delete', { method: 'POST', body: JSON.stringify({ id: conn.id }) });
+      const body = await r.json().catch(() => null);
+      if(!r.ok){ setDbBanner('error', toErrorText(body)); return; }
+      lastSavedConnectionId = null;
+      await loadConnectionList();
+      setDbBanner('success', 'Connection deleted');
+    }
+
+    function editSelectedConnection(){
+      const conn = selectedConnection();
+      if(!conn){ alert('Select a connection'); return; }
+      byId('editingConnectionId').value = String(conn.id);
+      byId('dbConnectionName').value = conn.connection_name || '';
+      byId('dbType').value = conn.db_type || 'local';
+      byId('dbAuthType').value = conn.auth_type || 'windows';
+      byId('dbPort').value = conn.port || 1433;
+      byId('dbName').value = conn.database_name || 'trade';
+      byId('dbHost').value = conn.host || '';
+      byId('dbUsername').value = conn.username || '';
+      byId('dbPassword').value = '';
+      byId('dbEncrypt').checked = !!conn.encrypt_connection;
+      byId('saveConnectionBtn').textContent = 'Update Connection';
+      byId('cancelEditBtn').style.display = '';
+      syncAuthFields();
+      byId('existingTab').style.display = 'none';
+      byId('newTab').style.display = '';
+    }
+
+    function cancelEditConnection(){
+      resetConnectionForm();
+      byId('existingTab').style.display = '';
+      byId('newTab').style.display = 'none';
+    }
+
+    async function loadRoles(){
+      const r = await apiFetch('/api/roles');
+      if(!r.ok) return;
+      const data = await r.json();
+      cachedRoles = data.roles || [];
+      const select = byId('newUserRole');
+      select.innerHTML = '<option value="">Select Role</option>';
+      cachedRoles.forEach(role => {
+        const opt = document.createElement('option');
+        opt.value = role.id;
+        opt.textContent = role.role_name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function createRole(){
+      const role_name = byId('roleName').value.trim();
+      const module_access = {
+        dashboard: byId('modDashboard').checked,
+        strategyBuilder: byId('modStrategyBuilder').checked,
+        tradeExecution: byId('modTradeExecution').checked,
+        reports: byId('modReports').checked,
+        userManagement: byId('modUserManagement').checked
+      };
+      const r = await apiFetch('/api/roles', { method:'POST', body: JSON.stringify({ role_name, module_access }) });
+      if(!r.ok){ alert('Failed to create role'); return; }
+      byId('roleName').value = '';
+      ['modDashboard','modStrategyBuilder','modTradeExecution','modReports','modUserManagement'].forEach(id => byId(id).checked = false);
+      await loadRoles();
+      alert('Role created');
+    }
+
+    function syncRoleAssignmentVisibility(){
+      byId('normalRoleWrapper').style.display = byId('newUserType').value === 'normal' ? '' : 'none';
+    }
+
+    async function createUser(){
+      const payload = {
+        username: byId('newUsername').value.trim(),
+        full_name: byId('newFullName').value.trim(),
+        email: byId('newEmail').value.trim(),
+        phone: byId('newPhone').value.trim(),
+        address: byId('newAddress').value.trim(),
+        pancard_no: byId('newPancard').value.trim(),
+        password: byId('newPassword').value,
+        user_type: byId('newUserType').value,
+        status: byId('newUserStatus').value,
+        role_id: byId('newUserType').value === 'normal' && byId('newUserRole').value ? Number(byId('newUserRole').value) : null
+      };
+      if(!payload.username || !payload.full_name || !payload.email || !payload.phone || !payload.password){
+        byId('userCreateStatus').textContent = 'Username, Name, Email, Phone and Password are required';
+        return;
+      }
+      const r = await apiFetch('/api/users/create', { method:'POST', body: JSON.stringify(payload) });
+      byId('newPassword').value = '';
+      const body = await r.json().catch(() => null);
+      if(!r.ok){
+        byId('userCreateStatus').textContent = body && body.error ? body.error : 'Failed to create user';
+        return;
+      }
+      byId('userCreateStatus').textContent = 'User created successfully';
+      byId('newUsername').value = '';
+      byId('newFullName').value = '';
+      byId('newEmail').value = '';
+      byId('newPhone').value = '';
+      byId('newAddress').value = '';
+      byId('newPancard').value = '';
+      byId('newUserRole').value = '';
+      await loadUsers();
+    }
+
+    async function loadUsers(){
+      const r = await apiFetch('/api/users');
+      if(!r.ok){ return; }
+      const data = await r.json();
+      const tbody = document.querySelector('#usersTable tbody');
+      tbody.innerHTML='';
+      (data.users || []).forEach(u=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.id}</td><td>${u.username || '-'}</td><td>${u.full_name || '-'}</td><td>${u.email || '-'}</td><td>${u.phone || '-'}</td><td>${u.address || '-'}</td><td>${u.pancard_no || '-'}</td><td>${u.user_type}</td><td>${u.status}</td><td>${u.role_name || '-'}</td><td></td>`;
+        const actions = tr.querySelector('td:last-child');
+
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'ghost small';
+        resetBtn.textContent = 'Reset Password';
+        resetBtn.onclick = async () => {
+          const newPassword = prompt('Enter new password');
+          if(!newPassword) return;
+          const resp = await apiFetch('/api/users/reset-password', { method: 'POST', body: JSON.stringify({ user_id: u.id, new_password: newPassword }) });
+          if(!resp.ok) alert('Failed to reset password');
+        };
+
+        const typeSel = document.createElement('select');
+        ['normal','admin','superadmin'].forEach(type => {
+          const opt = document.createElement('option');
+          opt.value = type;
+          opt.textContent = type;
+          if(type === (u.user_type || '').toLowerCase()) opt.selected = true;
+          typeSel.appendChild(opt);
+        });
+
+        const typeBtn = document.createElement('button');
+        typeBtn.type = 'button';
+        typeBtn.className = 'primary small';
+        typeBtn.textContent = 'Override Type';
+        typeBtn.onclick = async () => {
+          const resp = await apiFetch('/api/users/override-type', { method: 'POST', body: JSON.stringify({ user_id: u.id, user_type: typeSel.value }) });
+          if(!resp.ok){ alert('Failed to override type'); return; }
+          await loadUsers();
+        };
+
+        const roleSel = document.createElement('select');
+        roleSel.style.padding = '8px';
+        roleSel.style.borderRadius = '8px';
+        const noRole = document.createElement('option');
+        noRole.value = '';
+        noRole.textContent = 'No Role';
+        roleSel.appendChild(noRole);
+        cachedRoles.forEach((role) => {
+          const opt = document.createElement('option');
+          opt.value = role.id;
+          opt.textContent = role.role_name;
+          if (Number(u.role_id) === Number(role.id)) opt.selected = true;
+          roleSel.appendChild(opt);
+        });
+
+        const assignRoleBtn = document.createElement('button');
+        assignRoleBtn.type = 'button';
+        assignRoleBtn.className = 'ghost small';
+        assignRoleBtn.textContent = 'Assign Role';
+        assignRoleBtn.onclick = async () => {
+          const resp = await apiFetch('/api/users/assign-role', { method: 'POST', body: JSON.stringify({ user_id: u.id, role_id: roleSel.value ? Number(roleSel.value) : null }) });
+          if(!resp.ok){ alert('Failed to assign role'); return; }
+          await loadUsers();
+        };
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'ghost small';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = async () => {
+          const username = prompt('Username', u.username || '');
+          if(username === null) return;
+          const full_name = prompt('Full Name', u.full_name || '');
+          if(full_name === null) return;
+          const email = prompt('Email', u.email || '');
+          if(email === null) return;
+          const phone = prompt('Phone', u.phone || '');
+          if(phone === null) return;
+          const address = prompt('Address', u.address || '') || '';
+          const pancard_no = prompt('PAN Card', u.pancard_no || '') || '';
+          const status = prompt('Status (active/inactive)', u.status || 'active');
+          if(status === null) return;
+          const resp = await apiFetch('/api/users/update', {
+            method: 'POST',
+            body: JSON.stringify({ user_id: u.id, username: username.trim(), full_name: full_name.trim(), email: email.trim(), phone: phone.trim(), address: address.trim(), pancard_no: pancard_no.trim(), status: status.trim().toLowerCase() })
+          });
+          const body = await resp.json().catch(() => null);
+          if(!resp.ok){ alert(body && body.error ? body.error : 'Failed to update user'); return; }
+          await loadUsers();
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'ghost small';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = async () => {
+          if(!confirm(`Delete user ${u.username}?`)) return;
+          const resp = await apiFetch('/api/users/delete', { method: 'POST', body: JSON.stringify({ user_id: u.id }) });
+          const body = await resp.json().catch(() => null);
+          if(!resp.ok){ alert(body && body.error ? body.error : 'Failed to delete user'); return; }
+          await loadUsers();
+        };
+
+        actions.appendChild(resetBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(editBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(deleteBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(roleSel);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(assignRoleBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(typeSel);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(typeBtn);
+        tbody.appendChild(tr);
+      });
+    }
+
+    byId('tabExisting').addEventListener('click', () => {
+      byId('existingTab').style.display = '';
+      byId('newTab').style.display = 'none';
+      resetConnectionForm();
+    });
+    byId('tabNew').addEventListener('click', () => {
+      byId('existingTab').style.display = 'none';
+      byId('newTab').style.display = '';
+      if(!byId('editingConnectionId').value) resetConnectionForm();
+    });
+    byId('existingConnectionSelect').addEventListener('change', updateConnectionStatusLabel);
+    byId('dbType').addEventListener('change', () => {
+      byId('dbEncrypt').checked = byId('dbType').value === 'azure';
+    });
+    byId('dbAuthType').addEventListener('change', syncAuthFields);
+    byId('testConnectionBtn').addEventListener('click', testConnection);
+    byId('saveConnectionBtn').addEventListener('click', saveConnection);
+    byId('startConnectionBtn').addEventListener('click', () => runConnectionAction('/api/db/start'));
+    byId('stopConnectionBtn').addEventListener('click', () => runConnectionAction('/api/db/stop'));
+    byId('activateConnectionBtn').addEventListener('click', () => runConnectionAction('/api/db/activate'));
+    byId('deleteConnectionBtn').addEventListener('click', deleteSelectedConnection);
+    byId('editConnectionBtn').addEventListener('click', editSelectedConnection);
+    byId('cancelEditBtn').addEventListener('click', cancelEditConnection);
+    byId('refreshConnectionsBtn').addEventListener('click', async () => { await loadHostOptions(); await loadConnectionList(); });
+    byId('createRoleBtn').addEventListener('click', createRole);
+    byId('createUserBtn').addEventListener('click', createUser);
+    byId('newUserType').addEventListener('change', syncRoleAssignmentVisibility);
+
+    async function boot(){
+      const role = getCurrentUserType();
+      if(role !== 'superadmin'){
+        alert('SuperAdmin access only');
+        window.location.href = 'dashboard.html';
+        return;
+      }
+      byId('dbPort').value = '1433';
+      byId('dbName').value = 'trade';
+      byId('dbEncrypt').checked = false;
+      resetConnectionForm();
+      syncAuthFields();
+      await apiFetch('/api/db/ensure-default', { method: 'POST' });
+      await loadHostOptions();
+      syncRoleAssignmentVisibility();
+      await loadConnectionList();
+      await loadRoles();
+      await loadUsers();
+    }
+
+    boot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "smarttrade-backend",
+  "version": "1.0.0",
+  "description": "Minimal backend for SmartTrade connecting to MS-SQL (Windows Auth)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node db/init.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "msnodesqlv8": "^5.1.5",
+    "mssql": "^9.1.1",
+    "tedious": "^14.0.0"
+  }
+}

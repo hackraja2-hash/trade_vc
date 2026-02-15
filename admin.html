@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Admin</title>
+  <link href="style.css" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-inline"><div class="logo">ST</div><span>SmartTrade</span></div>
+    <ul class="nav">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="nse-bse.html">NSE/BSE</a></li>
+      <li><a href="buy-strategy.html">Buy Strategy</a></li>
+      <li><a href="sell-strategy.html">Sell Strategy</a></li>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a data-role-link="admin" class="active" href="admin.html">Admin</a></li>
+      <li><a data-role-link="superadmin" href="superadmin.html">Superadmin</a></li>
+    </ul>
+    <div class="actions"><span id="userLabel">admin</span> <button id="logoutBtn" class="ghost">Logout</button></div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h2>Admin Panel</h2>
+      <p class="muted">Create and manage normal users.</p>
+    </section>
+
+    <section class="card">
+      <h3>Create Normal User</h3>
+      <div id="adminStatus" class="status-banner" style="display:none;margin-bottom:10px"></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <label>Username<input id="newUsername" type="text" /></label>
+        <label>Full Name<input id="newFullName" type="text" /></label>
+        <label>Email<input id="newEmail" type="email" /></label>
+        <label>Phone<input id="newPhone" type="text" /></label>
+        <label>Address<input id="newAddress" type="text" /></label>
+        <label>PAN Card<input id="newPancard" type="text" /></label>
+        <label>Password<input id="newPassword" type="password" /></label>
+        <label>Status
+          <select id="newUserStatus" style="padding:10px;border-radius:10px">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label>Role assignment
+          <select id="newUserRole" style="padding:10px;border-radius:10px"></select>
+        </label>
+        <button id="createUserBtn" class="primary small" type="button">Create User</button>
+      </div>
+
+      <table id="usersTable" style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr><th style="text-align:left">ID</th><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>PAN</th><th>User Type</th><th>Status</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    let roleOptions = [];
+
+    function byId(id){ return document.getElementById(id); }
+
+    function setAdminStatus(type, message){
+      const el = byId('adminStatus');
+      if(!message){
+        el.style.display = 'none';
+        el.className = 'status-banner';
+        el.textContent = '';
+        return;
+      }
+      el.style.display = '';
+      el.className = `status-banner ${type === 'error' ? 'status-error' : 'status-success'}`;
+      el.textContent = message;
+    }
+
+    async function loadRoles(){
+      const r = await apiFetch('/api/roles');
+      if(!r.ok){ setAdminStatus('error', 'Failed to load roles'); return; }
+      const data = await r.json();
+      roleOptions = data.roles || [];
+      const select = byId('newUserRole');
+      select.innerHTML = '<option value="">Select Role</option>';
+      roleOptions.forEach(role => {
+        const opt = document.createElement('option');
+        opt.value = role.id;
+        opt.textContent = role.role_name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function createUser(){
+      const payload = {
+        username: byId('newUsername').value.trim(),
+        full_name: byId('newFullName').value.trim(),
+        email: byId('newEmail').value.trim(),
+        phone: byId('newPhone').value.trim(),
+        address: byId('newAddress').value.trim(),
+        pancard_no: byId('newPancard').value.trim(),
+        password: byId('newPassword').value,
+        user_type: 'normal',
+        status: byId('newUserStatus').value,
+        role_id: byId('newUserRole').value ? Number(byId('newUserRole').value) : null
+      };
+      if(!payload.username || !payload.full_name || !payload.email || !payload.phone || !payload.password){
+        setAdminStatus('error', 'Username, Name, Email, Phone and Password are required');
+        return;
+      }
+      const r = await apiFetch('/api/users/create', { method:'POST', body: JSON.stringify(payload) });
+      byId('newPassword').value = '';
+      const body = await r.json().catch(() => null);
+      if(!r.ok){ setAdminStatus('error', body && body.error ? body.error : 'Failed to create user'); return; }
+      byId('newUsername').value = '';
+      byId('newFullName').value = '';
+      byId('newEmail').value = '';
+      byId('newPhone').value = '';
+      byId('newAddress').value = '';
+      byId('newPancard').value = '';
+      byId('newUserRole').value = '';
+      setAdminStatus('success', 'User created successfully');
+      await loadUsers();
+    }
+
+    async function loadUsers(){
+      const r = await apiFetch('/api/users');
+      if(!r.ok){ return; }
+      const data = await r.json();
+      const tbody = document.querySelector('#usersTable tbody'); tbody.innerHTML='';
+      (data.users || []).filter(u => (u.user_type || '').toLowerCase() === 'normal').forEach(u=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.id}</td><td>${u.username || '-'}</td><td>${u.full_name || '-'}</td><td>${u.email || '-'}</td><td>${u.phone || '-'}</td><td>${u.address || '-'}</td><td>${u.pancard_no || '-'}</td><td>${u.user_type}</td><td>${u.status}</td><td>${u.role_name || '-'}</td><td></td>`;
+        const actions = tr.querySelector('td:last-child');
+
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset Password';
+        resetBtn.className = 'ghost small';
+        resetBtn.type = 'button';
+        resetBtn.onclick = async () => {
+          const newPassword = prompt('Enter new password');
+          if(!newPassword) return;
+          const resp = await apiFetch('/api/users/reset-password', { method:'POST', body: JSON.stringify({ user_id: u.id, new_password: newPassword }) });
+          if(!resp.ok){ setAdminStatus('error', 'Failed to reset password'); return; }
+          setAdminStatus('success', `Password reset for ${u.username}`);
+        };
+
+        const roleSel = document.createElement('select');
+        roleSel.style.padding = '8px';
+        roleSel.style.borderRadius = '8px';
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '';
+        noneOpt.textContent = 'No Role';
+        roleSel.appendChild(noneOpt);
+        roleOptions.forEach((role) => {
+          const opt = document.createElement('option');
+          opt.value = role.id;
+          opt.textContent = role.role_name;
+          if (Number(u.role_id) === Number(role.id)) opt.selected = true;
+          roleSel.appendChild(opt);
+        });
+
+        const roleBtn = document.createElement('button');
+        roleBtn.textContent = 'Assign Role';
+        roleBtn.className = 'primary small';
+        roleBtn.type = 'button';
+        roleBtn.onclick = async () => {
+          const selectedRole = roleSel.value ? Number(roleSel.value) : null;
+          const resp = await apiFetch('/api/users/assign-role', { method:'POST', body: JSON.stringify({ user_id: u.id, role_id: selectedRole }) });
+          const body = await resp.json().catch(() => null);
+          if(!resp.ok){ setAdminStatus('error', body && body.error ? body.error : 'Failed to assign role'); return; }
+          setAdminStatus('success', `Role updated for ${u.username}`);
+          await loadUsers();
+        };
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'ghost small';
+        editBtn.type = 'button';
+        editBtn.onclick = async () => {
+          const username = prompt('Username', u.username || '');
+          if(username === null) return;
+          const full_name = prompt('Full Name', u.full_name || '');
+          if(full_name === null) return;
+          const email = prompt('Email', u.email || '');
+          if(email === null) return;
+          const phone = prompt('Phone', u.phone || '');
+          if(phone === null) return;
+          const address = prompt('Address', u.address || '') || '';
+          const pancard_no = prompt('PAN Card', u.pancard_no || '') || '';
+          const status = prompt('Status (active/inactive)', u.status || 'active');
+          if(status === null) return;
+          const resp = await apiFetch('/api/users/update', {
+            method:'POST',
+            body: JSON.stringify({ user_id: u.id, username: username.trim(), full_name: full_name.trim(), email: email.trim(), phone: phone.trim(), address: address.trim(), pancard_no: pancard_no.trim(), status: status.trim().toLowerCase() })
+          });
+          const body = await resp.json().catch(() => null);
+          if(!resp.ok){ setAdminStatus('error', body && body.error ? body.error : 'Failed to update user'); return; }
+          setAdminStatus('success', `User updated: ${username.trim()}`);
+          await loadUsers();
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'ghost small';
+        deleteBtn.type = 'button';
+        deleteBtn.onclick = async () => {
+          if(!confirm(`Delete user ${u.username}?`)) return;
+          const resp = await apiFetch('/api/users/delete', { method:'POST', body: JSON.stringify({ user_id: u.id }) });
+          const body = await resp.json().catch(() => null);
+          if(!resp.ok){ setAdminStatus('error', body && body.error ? body.error : 'Failed to delete user'); return; }
+          setAdminStatus('success', `User deleted: ${u.username}`);
+          await loadUsers();
+        };
+
+        actions.appendChild(resetBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(editBtn);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(deleteBtn);
+        tbody.appendChild(tr);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(roleSel);
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(roleBtn);
+      });
+    }
+
+    async function boot(){
+      const role = getCurrentUserType();
+      if(role !== 'admin' && role !== 'superadmin'){
+        alert('Admin access only');
+        window.location.href = 'dashboard.html';
+        return;
+      }
+      await loadRoles();
+      await loadUsers();
+    }
+
+    byId('createUserBtn').addEventListener('click', createUser);
+    boot();
+  </script>
+</body>
+</html>

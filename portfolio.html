@@ -1,0 +1,2203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Portfolio</title>
+  <link href="style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    .portfolio-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .tab-btn{border:1px solid rgba(12,23,34,0.12);background:#fff;color:var(--text);padding:10px 14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+    .tab-btn.active{background:linear-gradient(90deg,var(--accent-d),var(--accent-a));color:#fff;border-color:transparent}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+    .portfolio-grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .position-card h4{margin:0 0 8px 0;font-size:15px}
+    .kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+    .kv-item{background:#f8fafc;border:1px solid rgba(12,23,34,0.06);border-radius:10px;padding:8px}
+    .kv-item .k{display:block;font-size:12px;color:var(--muted)}
+    .kv-item .v{display:block;font-size:14px;font-weight:600;color:var(--text)}
+    .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .chart-card{min-height:470px;padding:12px;display:flex;flex-direction:column}
+    .chart-card h4{margin:0 0 8px 0;font-size:16px}
+    .chart-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end;margin:0 0 8px 0}
+    .chart-controls label{display:grid;gap:4px;font-size:13px;color:var(--muted);font-weight:700}
+    .chart-type-hint{font-size:11px;color:var(--muted);font-weight:600;line-height:1.2}
+    .chart-controls select,.chart-controls input[type="color"]{height:36px}
+    .chart-controls button{height:36px}
+    .chart-msg{font-size:13px;color:#b45309;min-height:18px;margin:2px 0 8px 0;font-weight:600}
+    .chart-msg.ok{color:#15803d}
+    .chart-card.expanded{position:fixed;inset:20px;z-index:1200;height:auto !important;overflow:auto;box-shadow:0 20px 60px rgba(15,23,42,0.35);background:#fff}
+    .chart-card.expanded .chart-surface{min-height:520px}
+    .chart-surface{position:relative;flex:1;min-height:260px;border:1px solid rgba(15,23,42,0.10);border-radius:12px;padding:8px;background:#fff}
+    .chart-surface canvas{width:100% !important;height:100% !important;min-height:240px !important}
+    .chart-plotly{width:100%;height:100%;min-height:240px;display:none}
+    .empty-note{padding:12px;border-radius:10px;background:#f8fafc;border:1px dashed rgba(12,23,34,0.14);color:var(--muted);font-size:14px}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .preset-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px 0}
+    .preset-row label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:700}
+    .preset-row select{min-width:220px;height:36px}
+    .stock-picker{min-width:280px;background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid rgba(15,23,42,0.10);border-radius:12px;padding:10px}
+    .stock-check-list{max-height:132px;overflow:auto;border:1px solid rgba(12,23,34,0.12);border-radius:10px;background:#fff;padding:8px;display:grid;gap:6px}
+    .stock-check-item{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;font-size:13px;color:var(--text);padding:7px 8px;border:1px solid rgba(15,23,42,0.06);border-radius:8px;background:#ffffff;cursor:pointer;user-select:none}
+    .stock-check-item:hover{background:#f8fafc;border-color:rgba(79,70,229,0.20)}
+    .stock-check-item input{width:16px;height:16px;margin:0;accent-color:#4f46e5;flex:0 0 auto;vertical-align:middle}
+    .stock-check-item span{display:inline-block;line-height:1.2;font-weight:600;letter-spacing:0.2px}
+    .stock-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .stock-action-btn{appearance:none;border:1px solid rgba(15,23,42,0.18);background:linear-gradient(180deg,#ffffff,#eaf0ff);color:#0f172a;padding:9px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,0.08)}
+    .stock-action-btn:hover{transform:translateY(-1px);border-color:rgba(79,70,229,0.45);box-shadow:0 8px 16px rgba(79,70,229,0.15)}
+    .stock-action-btn:active{transform:translateY(0)}
+    .stock-action-btn.primary-tone{background:linear-gradient(90deg,#4f46e5,#06b6d4);color:#fff;border-color:transparent}
+    .font-sm{font-size:13px}
+    .font-md{font-size:14px}
+    .title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .title-row h3{margin:0}
+    .selection-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(79,70,229,0.12);color:#4338ca;border:1px solid rgba(79,70,229,0.25);margin-left:8px}
+    .panel-note{font-size:13px;color:var(--muted)}
+    .position-card{border:1px solid rgba(12,23,34,0.08)}
+    .position-card:hover{box-shadow:0 10px 22px rgba(12,23,34,0.10)}
+    .edit-btn{background:linear-gradient(180deg,#ffffff,#f1f5f9);border:1px solid rgba(12,23,34,0.14);color:var(--text);padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+    .edit-btn:hover{border-color:rgba(124,58,237,0.45)}
+    .type-pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .type-pill.mtf{background:rgba(124,58,237,0.12);color:#6d28d9}
+    .type-pill.long{background:rgba(6,182,212,0.12);color:#0e7490}
+    .manual-form-wrap{border:1px solid rgba(12,23,34,0.08);border-radius:12px;padding:12px;background:#fcfdff}
+    .manual-form-wrap.editing{border-color:rgba(124,58,237,0.45);box-shadow:0 0 0 3px rgba(124,58,237,0.10)}
+    .edit-state-banner{display:none;margin-top:10px;padding:9px 11px;border-radius:10px;font-size:13px;font-weight:600}
+    .edit-state-banner.show{display:block;background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.35);color:#5b21b6}
+    .btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .graph-lab-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}
+    .graph-lab-msg{font-size:12px;color:var(--muted);font-weight:600;min-height:16px;margin-top:6px}
+    .plotly-wrap{width:100%;min-height:520px;border:1px solid rgba(15,23,42,0.14);border-radius:12px;background:#fff;padding:6px}
+    body.pdf-export-mode{background:#ffffff !important;color:#111827 !important}
+    body.pdf-export-mode .page{max-width:1180px;margin:14px auto;padding:0 10px}
+    body.pdf-export-mode .card{box-shadow:none !important;border:1px solid rgba(15,23,42,0.18) !important}
+    body.pdf-export-mode .muted{color:#475569 !important}
+    body.pdf-export-mode h3{font-size:20px !important}
+    body.pdf-export-mode h4{font-size:16px !important}
+    body.pdf-export-mode .portfolio-grid-4{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}
+    body.pdf-export-mode .data-grid{grid-template-columns:1fr !important;gap:10px !important}
+    body.pdf-export-mode .chart-grid{grid-template-columns:1fr !important;gap:10px !important}
+    body.pdf-export-mode .kv-item{padding:10px !important}
+    body.pdf-export-mode .kv-item .k{font-size:12px !important}
+    body.pdf-export-mode .kv-item .v{font-size:15px !important}
+    body.pdf-export-mode .stock-picker{display:none !important}
+    body.pdf-export-mode .chart-card{min-height:380px !important}
+    body.pdf-export-mode .chart-surface{min-height:300px !important}
+    @media (max-width:1100px){.portfolio-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:900px){
+      .data-grid,.chart-grid,.portfolio-grid-4,.form-grid,.kv-grid{grid-template-columns:1fr}
+      .graph-lab-controls{grid-template-columns:1fr}
+      .chart-controls{grid-template-columns:1fr 1fr}
+      .page{padding:0 14px;margin:20px auto}
+      .hero h2{font-size:24px}
+      .card{padding:14px}
+      .chart-card{min-height:420px}
+      .chart-surface{min-height:230px}
+      .chart-surface canvas{min-height:210px !important}
+      .tab-btn{padding:9px 12px;font-size:13px}
+      .stock-picker{min-width:100%}
+      .stock-picker select{min-height:88px}
+      .btn-row{width:100%}
+      .btn-row button{flex:1 1 140px}
+    }
+    @media (max-width:760px){
+      .topbar{padding:10px 12px;align-items:flex-start;gap:8px;flex-wrap:wrap}
+      .brand-inline{width:100%;justify-content:flex-start}
+      .logo{width:44px;height:44px;font-size:14px}
+      .nav{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .nav a{display:block;text-align:center;padding:9px 8px;font-size:12px}
+      .actions{width:100%;justify-content:space-between}
+      .actions #userLabel{font-size:13px}
+      .section-head{align-items:flex-start}
+      .title-row h3{font-size:18px}
+      .panel-note{font-size:12px}
+      input,select,textarea{font-size:14px}
+      .primary.small,.ghost.small,.edit-btn{min-height:38px}
+      .kv-item .k{font-size:11px}
+      .kv-item .v{font-size:13px}
+      .empty-note{font-size:13px}
+    }
+    @media (max-width:480px){
+      .nav{grid-template-columns:1fr}
+      .portfolio-tabs{gap:8px}
+      .tab-btn{width:100%;text-align:center}
+      .hero h2{font-size:21px}
+      .manual-form-wrap{padding:10px}
+      .card{padding:12px}
+      .chart-card{min-height:380px}
+      .chart-card h4{font-size:14px}
+      .chart-surface{min-height:205px}
+      .chart-surface canvas{min-height:185px !important}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-inline"><div class="logo">ST</div><span>SmartTrade</span></div>
+    <ul class="nav">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="nse-bse.html">NSE/BSE</a></li>
+      <li><a href="buy-strategy.html">Buy Strategy</a></li>
+      <li><a href="sell-strategy.html">Sell Strategy</a></li>
+      <li><a class="active" href="portfolio.html">Portfolio</a></li>
+      <li><a href="admin.html">Admin</a></li>
+      <li><a href="superadmin.html">Superadmin</a></li>
+    </ul>
+    <div class="actions"><span id="userLabel">sa</span> <button id="logoutBtn" class="ghost">Logout</button></div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h2>Portfolio Intelligence Dashboard</h2>
+      <p class="muted font-md">Execution-derived positions, P&amp;L analytics, MTF financing and risk metrics.</p>
+    </section>
+
+    <section class="card section-card">
+      <div class="portfolio-tabs" id="portfolioTabs">
+        <button class="tab-btn active" data-tab="overviewTab" type="button">Overview</button>
+        <button class="tab-btn" data-tab="mtfTab" type="button">MTF Configuration</button>
+        <button class="tab-btn" data-tab="manualTab" type="button">Manual Stock Entry</button>
+      </div>
+      <div id="portfolioBanner" class="status-banner" style="display:none"></div>
+
+      <section id="overviewTab" class="tab-panel active">
+        <div id="filtersSection" class="card section-card" style="margin-bottom:12px">
+          <h3>Filters</h3>
+          <div class="form-grid" style="align-items:end">
+            <label>From Date<input id="filterFromDate" type="date" /></label>
+            <label>To Date<input id="filterToDate" type="date" /></label>
+            <label>Symbol
+              <select id="filterSymbol"><option value="all">All</option></select>
+            </label>
+            <label>Position Type
+              <select id="filterType">
+                <option value="all">All</option>
+                <option value="longterm">Long Term</option>
+                <option value="mtf">MTF</option>
+              </select>
+            </label>
+            <label>Trade Source
+              <select id="filterSource">
+                <option value="all">All</option>
+                <option value="manual">Manual</option>
+                <option value="algo">Algo</option>
+              </select>
+            </label>
+            <label class="row font-sm" style="gap:6px"><input id="autoRefreshToggle" type="checkbox" />Auto refresh (10s)</label>
+            <button id="applyFilterBtn" class="primary small" type="button">Apply Filter</button>
+            <button id="resetFilterBtn" class="ghost small" type="button">Reset</button>
+          </div>
+        </div>
+
+        <section id="summarySection" style="margin-bottom:12px">
+          <h3 style="margin:0 0 8px 0">Portfolio Summary</h3>
+          <div id="summaryCards" class="portfolio-grid-4"></div>
+        </section>
+
+        <section id="activeSection" class="card section-card" style="margin-bottom:12px">
+          <div class="section-head">
+            <h3 style="margin:0">Active Positions <span id="activeSelectedBadge" class="selection-badge">Selected: 0</span></h3>
+            <div class="stock-picker font-sm">
+              <div>Select Stock(s)</div>
+              <div id="activeStockCheckboxes" class="stock-check-list"></div>
+              <div class="stock-actions">
+                <button id="activeShowSelectedBtn" class="stock-action-btn primary-tone" type="button" style="display:none">Show Only Selected</button>
+                <button id="activeShowAllBtn" class="stock-action-btn" type="button">Show All</button>
+              </div>
+            </div>
+          </div>
+          <h4 class="font-md" style="margin:10px 0 8px 0">Open Position Summary (All Stocks)</h4>
+          <div id="activeSummaryGrid" class="portfolio-grid-4" style="margin-bottom:10px"></div>
+          <div id="activePositionsGrid" class="data-grid"></div>
+        </section>
+
+        <section id="closedSection" class="card section-card" style="margin-bottom:12px">
+          <div class="section-head">
+            <h3 style="margin:0">Closed Positions <span id="closedSelectedBadge" class="selection-badge">Selected: 0</span></h3>
+            <div class="stock-picker font-sm">
+              <div>Select Stock(s)</div>
+              <div id="closedStockCheckboxes" class="stock-check-list"></div>
+              <div class="stock-actions">
+                <button id="closedShowSelectedBtn" class="stock-action-btn primary-tone" type="button" style="display:none">Show Only Selected</button>
+                <button id="closedShowAllBtn" class="stock-action-btn" type="button">Show All</button>
+              </div>
+            </div>
+          </div>
+          <h4 class="font-md" style="margin:10px 0 8px 0">Closed Position Summary (All Stocks)</h4>
+          <div id="closedSummaryGrid" class="portfolio-grid-4" style="margin-bottom:10px"></div>
+          <div id="closedPositionsGrid" class="data-grid"></div>
+        </section>
+
+        <section id="chartsSection" class="card section-card" style="margin-bottom:12px">
+          <h3>Charts</h3>
+          <div class="preset-row">
+            <label>Starter Template
+              <select id="portfolioPresetSelect">
+                <option value="pro_trader">Pro Trader</option>
+                <option value="risk_manager">Risk Manager</option>
+                <option value="portfolio_review">Portfolio Review</option>
+              </select>
+            </label>
+            <button id="applyPortfolioPresetBtn" class="ghost small" type="button">Apply Template</button>
+            <button id="savePortfolioPresetBtn" class="ghost small" type="button">Save Custom Template</button>
+          </div>
+          <div class="chart-grid">
+            <article class="card chart-card"><h4>P&amp;L by Stock</h4><canvas id="chartProfitByStock"></canvas></article>
+            <article class="card chart-card"><h4>Exposure Allocation</h4><canvas id="chartExposure"></canvas></article>
+            <article class="card chart-card"><h4>Daily P&amp;L Trend</h4><canvas id="chartDailyPnl"></canvas></article>
+            <article class="card chart-card"><h4>Cumulative Equity Curve</h4><canvas id="chartEquityCurve"></canvas></article>
+            <article class="card chart-card"><h4>MTF Interest</h4><canvas id="chartMtfInterest"></canvas></article>
+            <article class="card chart-card"><h4>Algo vs Manual</h4><canvas id="chartAlgoVsManual"></canvas></article>
+            <article class="card chart-card"><h4>Win vs Loss</h4><canvas id="chartWinLoss"></canvas></article>
+            <article class="card chart-card"><h4>Holding Distribution</h4><canvas id="chartHoldingDistribution"></canvas></article>
+            <article class="card chart-card"><h4>Drawdown Curve</h4><canvas id="chartDrawdown"></canvas></article>
+          </div>
+          <div class="card section-card" style="margin-top:12px">
+            <div class="title-row">
+              <h3>Graph Lab (2D / 3D)</h3>
+              <span class="panel-note">Choose stock, graph type and color for custom visual exploration.</span>
+            </div>
+            <div class="graph-lab-controls" style="margin-top:8px">
+              <label>Stock
+                <select id="graphStockSelect"></select>
+              </label>
+              <label>Graph Type
+                <select id="graphTypeSelect" multiple size="7"></select>
+                <div class="row" style="gap:6px;flex-wrap:wrap">
+                  <button id="graphSelectAllBtn" class="ghost small" type="button">Select All Indicators</button>
+                  <button id="graphClearBtn" class="ghost small" type="button">Clear Indicators</button>
+                </div>
+              </label>
+              <label>Primary Color
+                <input id="graphColorPicker" type="color" value="#4f46e5" />
+              </label>
+              <button id="renderGraphBtn" class="primary small" type="button">Render Graph</button>
+            </div>
+            <div id="graphLabMsg" class="graph-lab-msg">Tip: Use Ctrl/Cmd + click to select multiple graph indicators.</div>
+            <div id="plotlyGraph" class="plotly-wrap" style="margin-top:10px"></div>
+          </div>
+        </section>
+
+        <section id="advancedSection" class="card section-card" style="margin-bottom:12px">
+          <h3>Advanced Analytics</h3>
+          <div id="advancedAnalytics" class="portfolio-grid-4"></div>
+        </section>
+
+        <section id="exportSection" class="card section-card">
+          <h3>Export</h3>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <button id="exportExcelBtn" class="primary small" type="button">Export to Excel</button>
+            <button id="exportPdfBtn" class="ghost small" type="button">Export to PDF</button>
+          </div>
+        </section>
+      </section>
+
+      <section id="mtfTab" class="tab-panel">
+        <div id="mtfConfigSection" class="card section-card">
+          <h3>MTF Configuration &amp; Leverage Settings</h3>
+          <div class="form-grid" style="align-items:end">
+            <label>MTF Daily Interest %<input id="mtfDailyPct" type="number" step="0.0001" min="0" /></label>
+            <label>Total MTF % Type
+              <select id="mtfTotalType">
+                <option value="simple">Simple</option>
+                <option value="compounded">Compounded</option>
+              </select>
+            </label>
+            <label>Effective From Date<input id="mtfEffectiveFrom" type="date" /></label>
+          </div>
+          <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+            <button id="saveMtfBtn" class="primary small" type="button">Apply MTF Config</button>
+            <div id="mtfPreview" class="muted font-md">Example Calculation Preview: Principal × Daily Rate × Days × Multiplier</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="manualTab" class="tab-panel">
+        <div id="manualEntrySection" class="card section-card" style="margin-bottom:12px">
+          <div class="title-row">
+            <h3>Manual Stock Entry</h3>
+            <span class="panel-note">Add new trades or update selected trades from portfolio cards.</span>
+          </div>
+          <p class="muted font-md" style="margin-top:0">Current MTF defaults are preloaded for manual entries and visible below.</p>
+          <div id="manualFormWrap" class="manual-form-wrap">
+          <form id="manualTradeForm" class="form-grid">
+            <label>Symbol<input id="manualSymbol" type="text" placeholder="INFY" required /></label>
+            <label>Side
+              <select id="manualSide">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+              </select>
+            </label>
+            <label>Quantity<input id="manualQuantity" type="number" min="0.01" step="0.01" required /></label>
+            <label>Price<input id="manualPrice" type="number" min="0.01" step="0.01" required /></label>
+            <label>Position Type
+              <select id="manualPositionType">
+                <option value="mtf" selected>MTF</option>
+                <option value="longterm">Long Term</option>
+              </select>
+            </label>
+            <label>Trade Source
+              <select id="manualTradeSource">
+                <option value="manual" selected>Manual</option>
+                <option value="algo">Algo</option>
+              </select>
+            </label>
+            <label id="manualMultiplierWrap">MTF Multiplier (X)<input id="manualMultiplier" type="number" min="0.01" step="0.01" value="1" /></label>
+            <label>Charges<input id="manualCharges" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Executed At<input id="manualExecutedAt" type="datetime-local" /></label>
+            <div class="btn-row">
+              <button id="addManualTradeBtn" class="primary small" type="submit">Add Trade</button>
+              <button id="cancelEditTradeBtn" class="ghost small" type="button" style="display:none">Cancel Edit</button>
+            </div>
+          </form>
+          <div id="manualEditState" class="edit-state-banner"></div>
+          </div>
+        </div>
+
+        <div id="manualDefaultsSection" class="card section-card">
+          <h3>Default MTF Values Applied</h3>
+          <div class="portfolio-grid-4">
+            <article class="card"><div class="muted font-sm">MTF Daily Interest %</div><div id="manualDefaultDaily" class="large">-</div></article>
+            <article class="card"><div class="muted font-sm">MTF Leverage Multiplier (X)</div><div id="manualDefaultMultiplier" class="large">-</div></article>
+            <article class="card"><div class="muted font-sm">Total MTF % Type</div><div id="manualDefaultType" class="large">-</div></article>
+            <article class="card"><div class="muted font-sm">Effective From Date</div><div id="manualDefaultDate" class="large">-</div></article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="script.js"></script>
+  <script>
+    let currentFilters = { fromDate: '', toDate: '', symbol: 'all', type: 'all', source: 'all' };
+    let chartRefs = {};
+    let refreshTimer = null;
+    let currentMtfConfig = null;
+    let allActiveRows = [];
+    let allClosedRows = [];
+    let editExecutionId = null;
+    let activeAppliedSymbols = new Set();
+    let closedAppliedSymbols = new Set();
+    let latestAnalyticsPayload = {};
+    let chartPreferences = {};
+
+    const CHART_CATEGORIES = [
+      { value: '2d', label: '2D' },
+      { value: '3d', label: '3D' },
+      { value: 'stock', label: 'Stock Market Specific' },
+      { value: 'heatmap', label: 'Heat Map' },
+      { value: 'decision', label: 'Decision / What-If' }
+    ];
+
+    const CHART_TYPES_BY_CATEGORY = {
+      '2d': [
+        { value: 'bar', label: 'Bar' },
+        { value: 'line', label: 'Line' },
+        { value: 'area', label: 'Area' },
+        { value: 'scatter', label: 'Scatter' },
+        { value: 'bubble', label: 'Bubble' },
+        { value: 'pie', label: 'Pie' },
+        { value: 'doughnut', label: 'Doughnut' },
+        { value: 'radar', label: 'Radar' },
+        { value: 'polar_area', label: 'Polar Area' }
+      ],
+      '3d': [
+        { value: 'surface3d', label: 'Surface 3D' },
+        { value: 'scatter3d', label: 'Scatter 3D' },
+        { value: 'mesh3d', label: 'Mesh 3D' },
+        { value: 'line3d', label: 'Line 3D' },
+        { value: 'bar3d', label: 'Bar 3D' }
+      ],
+      'stock': [
+        { value: 'area', label: 'Area' },
+        { value: 'line', label: 'Line' },
+        { value: 'candlestick_like', label: 'Candlestick (Like)' },
+        { value: 'waterfall_like', label: 'Waterfall (Like)' },
+        { value: 'volume_combo', label: 'Volume Combo' },
+        { value: 'macd_like', label: 'MACD (Like)' }
+      ],
+      'heatmap': [
+        { value: 'heatmap', label: 'Heat Map' },
+        { value: 'contour', label: 'Contour' }
+      ]
+    };
+
+    function getModernTypesForCategory(category){
+      if(window.SmartTradeCharts && window.SmartTradeCharts.getModernGraphTypesForCategory){
+        const list = window.SmartTradeCharts.getModernGraphTypesForCategory(category);
+        if(Array.isArray(list) && list.length) return list;
+      }
+      return CHART_TYPES_BY_CATEGORY[category] || [];
+    }
+
+    function parseModernType(typeValue){
+      if(window.SmartTradeCharts && window.SmartTradeCharts.parseModernGraphType){
+        return window.SmartTradeCharts.parseModernGraphType(typeValue);
+      }
+      return { raw: typeValue, base: typeValue, variant: 'classic' };
+    }
+
+    const CHART_DEFS = {
+      chartProfitByStock: { dataKey: 'profit_loss_by_stock', labelKey: 'symbol', valueKey: 'value', defaultCategory: '2d', defaultType: 'bar__institutional', allowedBase: ['bar','line','waterfall_like'] },
+      chartExposure: { dataKey: 'exposure_allocation', labelKey: 'symbol', valueKey: 'value', defaultCategory: '2d', defaultType: 'donut__institutional', allowedBase: ['pie','donut','treemap_like'] },
+      chartDailyPnl: { dataKey: 'daily_pnl_trend', labelKey: 'date', valueKey: 'pnl', defaultCategory: '2d', defaultType: 'line__institutional', allowedBase: ['line','area','bar'] },
+      chartEquityCurve: { dataKey: 'cumulative_equity_curve', labelKey: 'date', valueKey: 'value', defaultCategory: '2d', defaultType: 'area__institutional', allowedBase: ['line','area','spline'] },
+      chartMtfInterest: { dataKey: 'mtf_interest_accumulation', labelKey: 'symbol', valueKey: 'value', defaultCategory: '2d', defaultType: 'line__institutional', allowedBase: ['line','bar','area'] },
+      chartAlgoVsManual: { dataKey: 'algo_vs_manual_profit', labelKey: 'label', valueKey: 'value', defaultCategory: '2d', defaultType: 'grouped_bar__institutional', allowedBase: ['grouped_bar','stacked_bar','bar','pie'] },
+      chartWinLoss: { dataKey: 'win_vs_loss_ratio', labelKey: 'label', valueKey: 'value', defaultCategory: '2d', defaultType: 'donut__institutional', allowedBase: ['donut','pie','bar'] },
+      chartHoldingDistribution: { dataKey: 'holding_period_distribution', labelKey: 'bucket', valueKey: 'value', defaultCategory: '2d', defaultType: 'bar__institutional', allowedBase: ['bar','histogram','treemap_like'] },
+      chartDrawdown: { dataKey: 'drawdown_curve', labelKey: 'date', valueKey: 'value', defaultCategory: 'decision', defaultType: 'drawdown_curve__institutional', allowedBase: ['line','area','drawdown_curve'] }
+    };
+
+    const PORTFOLIO_PRESETS = {
+      pro_trader: {
+        chartProfitByStock: { category: '2d', type: 'bar__institutional', color: '#4f46e5' },
+        chartExposure: { category: '2d', type: 'donut__institutional', color: '#0ea5e9' },
+        chartDailyPnl: { category: '2d', type: 'line__institutional', color: '#7c3aed' },
+        chartEquityCurve: { category: '2d', type: 'area__institutional', color: '#22c55e' },
+        chartMtfInterest: { category: '2d', type: 'line__institutional', color: '#2563eb' },
+        chartAlgoVsManual: { category: '2d', type: 'grouped_bar__institutional', color: '#4f46e5' },
+        chartWinLoss: { category: '2d', type: 'donut__institutional', color: '#0ea5e9' },
+        chartHoldingDistribution: { category: '2d', type: 'bar__institutional', color: '#f59e0b' },
+        chartDrawdown: { category: 'decision', type: 'drawdown_curve__institutional', color: '#dc2626' }
+      },
+      risk_manager: {
+        chartProfitByStock: { category: '2d', type: 'line__institutional', color: '#2563eb' },
+        chartExposure: { category: '2d', type: 'treemap_like__institutional', color: '#0ea5e9' },
+        chartDailyPnl: { category: '2d', type: 'line__institutional', color: '#7c3aed' },
+        chartEquityCurve: { category: 'decision', type: 'drawdown_curve__institutional', color: '#dc2626' },
+        chartMtfInterest: { category: '2d', type: 'bar__institutional', color: '#ef4444' },
+        chartAlgoVsManual: { category: '2d', type: 'stacked_bar__institutional', color: '#f97316' },
+        chartWinLoss: { category: '2d', type: 'bar__institutional', color: '#6366f1' },
+        chartHoldingDistribution: { category: '2d', type: 'histogram__institutional', color: '#0ea5e9' },
+        chartDrawdown: { category: 'decision', type: 'drawdown_curve__institutional', color: '#dc2626' }
+      },
+      portfolio_review: {
+        chartProfitByStock: { category: '2d', type: 'waterfall_like__institutional', color: '#4f46e5' },
+        chartExposure: { category: '2d', type: 'donut__institutional', color: '#06b6d4' },
+        chartDailyPnl: { category: '2d', type: 'line_closing_price__institutional', color: '#2563eb' },
+        chartEquityCurve: { category: '2d', type: 'area__institutional', color: '#22c55e' },
+        chartMtfInterest: { category: '2d', type: 'stacked_column__institutional', color: '#7c3aed' },
+        chartAlgoVsManual: { category: '2d', type: 'grouped_bar__institutional', color: '#f59e0b' },
+        chartWinLoss: { category: '2d', type: 'bullet_graph__institutional', color: '#0ea5e9' },
+        chartHoldingDistribution: { category: '2d', type: 'treemap_like__institutional', color: '#14b8a6' },
+        chartDrawdown: { category: '2d', type: 'line__institutional', color: '#ef4444' }
+      }
+    };
+
+    const PORTFOLIO_CUSTOM_PRESET_KEY = 'smarttrade_portfolio_custom_preset_v1';
+
+    function ensurePresetOption(selectId, value, label){
+      const select = byId(selectId);
+      if(!select) return;
+      if(![...select.options].some((opt) => opt.value === value)){
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    }
+
+    function getStoredPortfolioCustomPreset(){
+      try {
+        const raw = localStorage.getItem(PORTFOLIO_CUSTOM_PRESET_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function capturePortfolioCurrentPreset(){
+      const captured = {};
+      Object.keys(CHART_DEFS).forEach((chartId) => {
+        const categoryEl = byId(`${chartId}Category`);
+        const typeEl = byId(`${chartId}Type`);
+        const colorEl = byId(`${chartId}Color`);
+        if(!categoryEl || !typeEl || !colorEl) return;
+        captured[chartId] = {
+          category: categoryEl.value,
+          type: typeEl.value,
+          color: colorEl.value
+        };
+      });
+      return captured;
+    }
+
+    function savePortfolioCustomPreset(){
+      const captured = capturePortfolioCurrentPreset();
+      localStorage.setItem(PORTFOLIO_CUSTOM_PRESET_KEY, JSON.stringify(captured));
+      ensurePresetOption('portfolioPresetSelect', 'custom_saved', 'Custom Saved');
+      byId('portfolioPresetSelect').value = 'custom_saved';
+      setBanner('success', 'Custom chart template saved');
+    }
+
+    function applyPortfolioPreset(presetName){
+      const preset = presetName === 'custom_saved' ? getStoredPortfolioCustomPreset() : PORTFOLIO_PRESETS[presetName];
+      if(!preset) return;
+      Object.entries(preset).forEach(([chartId, cfg]) => {
+        if(!CHART_DEFS[chartId]) return;
+        const categoryEl = byId(`${chartId}Category`);
+        const typeEl = byId(`${chartId}Type`);
+        const colorEl = byId(`${chartId}Color`);
+        if(!categoryEl || !typeEl || !colorEl) return;
+        categoryEl.value = cfg.category;
+        populateTypeOptions(chartId);
+        if([...typeEl.options].some((opt) => opt.value === cfg.type)) typeEl.value = cfg.type;
+        colorEl.value = cfg.color;
+        chartPreferences[chartId] = { category: cfg.category, type: typeEl.value, color: cfg.color };
+        drawConfiguredChart(chartId);
+      });
+    }
+
+    function byId(id){ return document.getElementById(id); }
+    function currency(v){ return `₹ ${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`; }
+    function safe(v){ return v === null || v === undefined || v === '' ? '-' : v; }
+    function dateOnly(v){ return String(v || '').slice(0, 10); }
+    function normalizePositionType(value){
+      const t = String(value || '').toLowerCase();
+      return t.includes('mtf') ? 'mtf' : 'longterm';
+    }
+    function getPositionKey(row){
+      return `${String(row.symbol || '').toUpperCase()}__${normalizePositionType(row.position_type || row.execution_position_type)}`;
+    }
+    function getPositionLabel(row){
+      const symbol = String(row.symbol || '').toUpperCase();
+      const type = normalizePositionType(row.position_type || row.execution_position_type) === 'mtf' ? 'MTF' : 'LONG';
+      return `${symbol} • ${type}`;
+    }
+
+    function setBanner(type, msg){
+      const el = byId('portfolioBanner');
+      if(!msg){ el.style.display = 'none'; el.textContent = ''; el.className = 'status-banner'; return; }
+      el.style.display = '';
+      el.textContent = msg;
+      el.className = `status-banner ${type === 'error' ? 'status-error' : 'status-success'}`;
+    }
+
+    function queryFromFilters(){
+      const q = new URLSearchParams();
+      Object.entries(currentFilters).forEach(([k,v]) => { if(v && v !== 'all') q.set(k, v); });
+      return q.toString();
+    }
+
+    function summaryCardData(summary){
+      return [
+        { key: 'Total Portfolio Exposure', value: currency(summary.total_portfolio_exposure), positive: summary.total_portfolio_exposure >= 0 },
+        { key: 'Total Unrealized P&L', value: currency(summary.total_unrealized_pnl), positive: summary.total_unrealized_pnl >= 0 },
+        { key: 'Total Realized P&L', value: currency(summary.total_realized_pnl), positive: summary.total_realized_pnl >= 0 },
+        { key: 'Total MTF Interest Paid', value: currency(summary.total_mtf_interest_paid), positive: summary.total_mtf_interest_paid <= 0 },
+        { key: 'Net Portfolio Value', value: currency(summary.net_portfolio_value), positive: summary.net_portfolio_value >= 0 },
+        { key: 'Total Charges Paid', value: currency(summary.total_charges_paid), positive: summary.total_charges_paid <= 0 },
+        { key: 'Portfolio Concentration %', value: `${Number(summary.portfolio_concentration_pct || 0).toFixed(2)}%`, positive: false },
+        { key: 'Win Rate %', value: `${Number(summary.win_rate_pct || 0).toFixed(2)}%`, positive: Number(summary.win_rate_pct || 0) >= 50 }
+      ];
+    }
+
+    function renderSummary(summary){
+      const wrap = byId('summaryCards');
+      wrap.innerHTML = '';
+      summaryCardData(summary).forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `<h3 class="font-md">${item.key}</h3><p class="large ${item.positive ? 'positive' : ''}" style="color:${item.positive ? '#15803d' : '#b91c1c'}">${item.value}</p>`;
+        wrap.appendChild(card);
+      });
+    }
+
+    function keyValueBox(label, value){
+      return `<div class="kv-item"><span class="k">${label}</span><span class="v">${value}</span></div>`;
+    }
+
+    function renderActivePositions(rows){
+      const wrap = byId('activePositionsGrid');
+      wrap.innerHTML = '';
+      if(!rows.length){
+        wrap.innerHTML = '<div class="empty-note">No active positions available for selected filters.</div>';
+        return;
+      }
+      rows.forEach((r) => {
+        const card = document.createElement('article');
+        card.className = 'card position-card';
+        const isMtf = String(r.position_type || '').toUpperCase() === 'MTF';
+        card.innerHTML = `
+          <div class="title-row"><h4>${safe(r.symbol)}</h4><span class="type-pill ${isMtf ? 'mtf' : 'long'}">${safe(r.position_type)}</span></div>
+          <div class="kv-grid">
+            ${keyValueBox('Quantity', safe(r.quantity))}
+            ${keyValueBox('Source Mix', safe(r.trade_source_mix))}
+            ${keyValueBox('Average Buy', currency(r.average_buy_price))}
+            ${keyValueBox('Effective Cost', currency(r.effective_cost_per_share))}
+            ${keyValueBox('LTP', r.current_market_price === null ? 'Price Unavailable' : currency(r.current_market_price))}
+            ${keyValueBox('Exposure', currency(r.exposure))}
+            ${keyValueBox('Unrealized P&L', `<span style="color:${Number(r.unrealized_pnl) >= 0 ? '#15803d' : '#b91c1c'}">${currency(r.unrealized_pnl)}</span>`)}
+            ${keyValueBox('Realized P&L', `<span style="color:${Number(r.realized_pnl) >= 0 ? '#15803d' : '#b91c1c'}">${currency(r.realized_pnl)}</span>`)}
+            ${keyValueBox('Total P&L', `<span style="color:${Number(r.total_pnl) >= 0 ? '#15803d' : '#b91c1c'}">${currency(r.total_pnl)}</span>`)}
+            ${keyValueBox('Break Even', currency(r.break_even_price))}
+            ${keyValueBox('Days Held', safe(r.days_held))}
+            ${keyValueBox('Tax', safe(r.tax_classification))}
+            ${keyValueBox('Health', safe(r.position_health))}
+            ${keyValueBox('Allocation %', `${Number(r.portfolio_allocation_pct || 0).toFixed(2)}%`)}
+            ${keyValueBox('MTF Multiplier', String(r.position_type || '').toUpperCase() === 'MTF' ? Number(r.mtf_multiplier || 1).toFixed(2) : '-')}
+          </div>
+          ${r.execution_id ? `<div style="margin-top:10px"><button class="edit-btn edit-trade-btn" data-execution-id="${r.execution_id}" data-symbol="${safe(r.symbol)}" data-side="${safe(r.execution_side || 'BUY')}" data-qty="${safe(r.execution_quantity || r.quantity)}" data-price="${safe(r.execution_price || r.average_buy_price)}" data-position-type="${String(r.position_type || '').toLowerCase()==='mtf'?'mtf':'longterm'}" data-trade-source="${safe(r.execution_trade_source || 'manual')}" data-charges="${safe(r.execution_charges || 0)}" data-mtf-multiplier="${Number(r.mtf_multiplier || 1)}">Edit</button></div>` : ''}
+        `;
+        wrap.appendChild(card);
+      });
+      wireEditButtons();
+    }
+
+    function renderActiveSummary(rows){
+      const wrap = byId('activeSummaryGrid');
+      wrap.innerHTML = '';
+      if(!rows.length){
+        wrap.innerHTML = '<div class="empty-note">No active stock summary available.</div>';
+        return;
+      }
+      const byStock = new Map();
+      rows.forEach((r) => {
+        const sym = String(r.symbol || '').toUpperCase();
+        if(!byStock.has(sym)) byStock.set(sym, { symbol: sym, qty: 0, exposure: 0, unrealized: 0, realized: 0, total: 0 });
+        const item = byStock.get(sym);
+        item.qty += Number(r.quantity || 0);
+        item.exposure += Number(r.exposure || 0);
+        item.unrealized += Number(r.unrealized_pnl || 0);
+        item.realized += Number(r.realized_pnl || 0);
+        item.total += Number(r.total_pnl || 0);
+      });
+
+      Array.from(byStock.values()).sort((a,b) => a.symbol.localeCompare(b.symbol)).forEach((s) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <h4 style="margin:0 0 8px 0">${s.symbol}</h4>
+          <div class="kv-grid">
+            ${keyValueBox('Open Qty', Number(s.qty).toFixed(2))}
+            ${keyValueBox('Exposure', currency(s.exposure))}
+            ${keyValueBox('Unrealized', `<span style="color:${s.unrealized >= 0 ? '#15803d' : '#b91c1c'}">${currency(s.unrealized)}</span>`)}
+            ${keyValueBox('Realized', `<span style="color:${s.realized >= 0 ? '#15803d' : '#b91c1c'}">${currency(s.realized)}</span>`)}
+            ${keyValueBox('Total P&L', `<span style="color:${s.total >= 0 ? '#15803d' : '#b91c1c'}">${currency(s.total)}</span>`)}
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function renderClosedPositions(rows){
+      const wrap = byId('closedPositionsGrid');
+      wrap.innerHTML = '';
+      if(!rows.length){
+        wrap.innerHTML = '<div class="empty-note">No closed positions available for selected filters.</div>';
+        return;
+      }
+      rows.forEach((r) => {
+        const card = document.createElement('article');
+        card.className = 'card position-card';
+        const isMtf = String(r.execution_position_type || r.position_type || '').toLowerCase() === 'mtf';
+        card.innerHTML = `
+          <div class="title-row"><h4>${safe(r.symbol)}</h4><span class="type-pill ${isMtf ? 'mtf' : 'long'}">${isMtf ? 'MTF' : 'LONG'}</span></div>
+          <div class="kv-grid">
+            ${keyValueBox('Total Buy Value', currency(r.total_buy_value))}
+            ${keyValueBox('Total Sell Value', currency(r.total_sell_value))}
+            ${keyValueBox('Realized P&L', `<span style="color:${Number(r.realized_pnl) >= 0 ? '#15803d' : '#b91c1c'}">${currency(r.realized_pnl)}</span>`)}
+            ${keyValueBox('Total Charges', currency(r.total_charges))}
+            ${keyValueBox('Holding Period', `${safe(r.holding_days)} days`)}
+            ${keyValueBox('Trade Source', safe(r.trade_source))}
+            ${keyValueBox('Tax Type', safe(r.tax_type))}
+          </div>
+          ${r.execution_id ? `<div style="margin-top:10px"><button class="edit-btn edit-trade-btn" data-execution-id="${r.execution_id}" data-symbol="${safe(r.symbol)}" data-side="${safe(r.execution_side || 'SELL')}" data-qty="${safe(r.execution_quantity || 1)}" data-price="${safe(r.execution_price || r.total_sell_value)}" data-position-type="${String(r.execution_position_type || r.position_type || '').toLowerCase()==='mtf'?'mtf':'longterm'}" data-trade-source="${safe(r.execution_trade_source || (String(r.trade_source || '').toLowerCase()==='algo'?'algo':'manual'))}" data-charges="${safe(r.execution_charges || r.total_charges)}" data-mtf-multiplier="1">Edit</button></div>` : ''}
+        `;
+        wrap.appendChild(card);
+      });
+      wireEditButtons();
+    }
+
+    function renderClosedSummary(rows){
+      const wrap = byId('closedSummaryGrid');
+      wrap.innerHTML = '';
+      if(!rows.length){
+        wrap.innerHTML = '<div class="empty-note">No closed stock summary available.</div>';
+        return;
+      }
+      const byStock = new Map();
+      rows.forEach((r) => {
+        const sym = String(r.symbol || '').toUpperCase();
+        if(!byStock.has(sym)) byStock.set(sym, { symbol: sym, buy: 0, sell: 0, charges: 0, realized: 0, trades: 0 });
+        const item = byStock.get(sym);
+        item.buy += Number(r.total_buy_value || 0);
+        item.sell += Number(r.total_sell_value || 0);
+        item.charges += Number(r.total_charges || 0);
+        item.realized += Number(r.realized_pnl || 0);
+        item.trades += 1;
+      });
+
+      Array.from(byStock.values()).sort((a,b) => a.symbol.localeCompare(b.symbol)).forEach((s) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <h4 style="margin:0 0 8px 0">${s.symbol}</h4>
+          <div class="kv-grid">
+            ${keyValueBox('Closed Trades', s.trades)}
+            ${keyValueBox('Total Buy', currency(s.buy))}
+            ${keyValueBox('Total Sell', currency(s.sell))}
+            ${keyValueBox('Charges', currency(s.charges))}
+            ${keyValueBox('Realized P&L', `<span style="color:${s.realized >= 0 ? '#15803d' : '#b91c1c'}">${currency(s.realized)}</span>`)}
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function pickLatestSymbol(rows, dateField){
+      let latestSymbol = '';
+      let latestTime = Number.NEGATIVE_INFINITY;
+      rows.forEach((row) => {
+        const sym = getPositionKey(row);
+        const time = new Date(row[dateField] || 0).getTime();
+        if(sym && Number.isFinite(time) && time > latestTime){
+          latestTime = time;
+          latestSymbol = sym;
+        }
+      });
+      return latestSymbol;
+    }
+
+    function getCheckedSymbols(containerId){
+      const set = new Set();
+      byId(containerId).querySelectorAll('input[type="checkbox"]:checked').forEach((cb) => set.add(cb.value));
+      return set;
+    }
+
+    function setCheckedSymbols(containerId, symbolsSet){
+      byId(containerId).querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = symbolsSet.has(cb.value);
+      });
+    }
+
+    function toggleShowSelectedButton(section){
+      const checked = section === 'active'
+        ? getCheckedSymbols('activeStockCheckboxes')
+        : getCheckedSymbols('closedStockCheckboxes');
+      const btn = byId(section === 'active' ? 'activeShowSelectedBtn' : 'closedShowSelectedBtn');
+      btn.style.display = checked.size > 0 ? '' : 'none';
+      updateSelectionBadges();
+    }
+
+    function updateSelectionBadges(){
+      const activeCount = getCheckedSymbols('activeStockCheckboxes').size;
+      const closedCount = getCheckedSymbols('closedStockCheckboxes').size;
+      byId('activeSelectedBadge').textContent = `Selected: ${activeCount}`;
+      byId('closedSelectedBadge').textContent = `Selected: ${closedCount}`;
+    }
+
+    function renderStockCheckboxes(section, rows, dateField){
+      const containerId = section === 'active' ? 'activeStockCheckboxes' : 'closedStockCheckboxes';
+      const container = byId(containerId);
+      const prevChecked = getCheckedSymbols(containerId);
+      const entries = Array.from(new Map(rows.map((r) => [getPositionKey(r), getPositionLabel(r)])).entries())
+        .filter(([key]) => key && !key.startsWith('__'))
+        .sort((a,b) => a[1].localeCompare(b[1]));
+      const symbols = entries.map(([k]) => k);
+      const latestSymbol = pickLatestSymbol(rows, dateField);
+
+      const hasValidPrev = Array.from(prevChecked).some((s) => symbols.includes(s));
+      const baseSet = hasValidPrev
+        ? prevChecked
+        : new Set([latestSymbol].filter(Boolean));
+
+      container.innerHTML = '';
+      entries.forEach(([symbol, labelText]) => {
+        const row = document.createElement('label');
+        row.className = 'stock-check-item';
+        row.innerHTML = `<input type="checkbox" value="${symbol}" ${baseSet.has(symbol) ? 'checked' : ''} /> <span>${labelText}</span>`;
+        container.appendChild(row);
+      });
+
+      container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener('change', () => toggleShowSelectedButton(section));
+      });
+
+      if (section === 'active') {
+        activeAppliedSymbols = new Set(baseSet);
+      } else {
+        closedAppliedSymbols = new Set(baseSet);
+      }
+
+      toggleShowSelectedButton(section);
+      updateSelectionBadges();
+    }
+
+    function applySectionStockFilters(){
+      const activeSelected = activeAppliedSymbols;
+      const closedSelected = closedAppliedSymbols;
+
+      const filteredActive = activeSelected.size
+        ? allActiveRows.filter((r) => activeSelected.has(getPositionKey(r)))
+        : allActiveRows;
+      const filteredClosed = closedSelected.size
+        ? allClosedRows.filter((r) => closedSelected.has(getPositionKey(r)))
+        : allClosedRows;
+
+      renderActivePositions(filteredActive);
+      renderClosedPositions(filteredClosed);
+    }
+
+    function applySelectedStocks(section){
+      const selected = section === 'active'
+        ? getCheckedSymbols('activeStockCheckboxes')
+        : getCheckedSymbols('closedStockCheckboxes');
+      if (section === 'active') activeAppliedSymbols = selected;
+      else closedAppliedSymbols = selected;
+      applySectionStockFilters();
+    }
+
+    function showAllStocks(section){
+      if (section === 'active') {
+        activeAppliedSymbols = new Set();
+        setCheckedSymbols('activeStockCheckboxes', new Set());
+      } else {
+        closedAppliedSymbols = new Set();
+        setCheckedSymbols('closedStockCheckboxes', new Set());
+      }
+      toggleShowSelectedButton(section);
+      updateSelectionBadges();
+      applySectionStockFilters();
+    }
+
+    function updateManualMultiplierVisibility(){
+      const isMtf = byId('manualPositionType').value === 'mtf';
+      byId('manualMultiplierWrap').style.display = isMtf ? '' : 'none';
+      if(!isMtf) byId('manualMultiplier').value = '1';
+    }
+
+    function setManualEditState(message){
+      const state = byId('manualEditState');
+      const formWrap = byId('manualFormWrap');
+      state.textContent = message || '';
+      state.classList.toggle('show', Boolean(message));
+      formWrap.classList.toggle('editing', Boolean(message));
+      byId('cancelEditTradeBtn').style.display = editExecutionId ? '' : 'none';
+      byId('addManualTradeBtn').textContent = editExecutionId ? 'Update Trade' : 'Add Trade';
+    }
+
+    function loadTradeIntoForm(data){
+      editExecutionId = data.executionId || null;
+      byId('manualSymbol').value = data.symbol || '';
+      byId('manualSide').value = data.side || 'BUY';
+      byId('manualQuantity').value = data.qty || '';
+      byId('manualPrice').value = data.price || '';
+      byId('manualPositionType').value = data.positionType || 'mtf';
+      byId('manualTradeSource').value = data.tradeSource || 'manual';
+      byId('manualCharges').value = data.charges || 0;
+      byId('manualMultiplier').value = data.mtfMultiplier || 1;
+      updateManualMultiplierVisibility();
+      setManualEditState(editExecutionId ? `Editing trade #${editExecutionId} — update fields and click Update Trade.` : '');
+      setActiveTab('manualTab');
+    }
+
+    function wireEditButtons(){
+      document.querySelectorAll('.edit-trade-btn').forEach((btn) => {
+        btn.onclick = () => {
+          loadTradeIntoForm({
+            executionId: Number(btn.dataset.executionId || 0),
+            symbol: btn.dataset.symbol,
+            side: btn.dataset.side,
+            qty: btn.dataset.qty,
+            price: btn.dataset.price,
+            positionType: btn.dataset.positionType,
+            tradeSource: btn.dataset.tradeSource,
+            charges: btn.dataset.charges,
+            mtfMultiplier: btn.dataset.mtfMultiplier
+          });
+        };
+      });
+    }
+
+    function drawChart(id, type, labels, data, datasetLabel){
+      const canvas = byId(id);
+      if(!canvas) return;
+      if(chartRefs[id]) chartRefs[id].destroy();
+      const usedLabels = labels && labels.length ? labels : ['No Data'];
+      const usedData = data && data.length ? data : [0];
+      chartRefs[id] = new Chart(canvas, {
+        type,
+        data: { labels: usedLabels, datasets: [{ label: datasetLabel, data: usedData, backgroundColor: ['#06b6d4','#7c3aed','#f59e0b','#22c55e','#ef4444','#3b82f6','#14b8a6','#f97316'], borderColor: '#0f1724', borderWidth: 1, fill: false, tension: 0.25 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: true, labels: { font: { size: 12 } } } },
+          scales: type === 'pie' || type === 'doughnut' ? {} : { x: { ticks: { font: { size: 11 } } }, y: { ticks: { font: { size: 11 } } } }
+        }
+      });
+    }
+
+    function getChartMessageEl(chartId){
+      return byId(`${chartId}Msg`);
+    }
+
+    function setChartMessage(chartId, message, ok = false){
+      const el = getChartMessageEl(chartId);
+      if(!el) return;
+      el.textContent = message || '';
+      el.classList.toggle('ok', Boolean(ok));
+    }
+
+    function mapUiTypeToChartJsType(type){
+      const parsed = parseModernType(type);
+      const base = parsed.base;
+      if(base === 'polar_area') return 'polarArea';
+      if(base === 'area') return 'line';
+      if(base === 'waterfall_like') return 'bar';
+      return base;
+    }
+
+    function getChartElements(chartId){
+      const canvas = byId(chartId);
+      const plotlyEl = byId(`${chartId}Plotly`);
+      return { canvas, plotlyEl };
+    }
+
+    function setCardRenderMode(chartId, mode){
+      const { canvas, plotlyEl } = getChartElements(chartId);
+      if(!canvas || !plotlyEl) return;
+      if(mode === 'plotly'){
+        canvas.style.display = 'none';
+        plotlyEl.style.display = 'block';
+      } else {
+        plotlyEl.style.display = 'none';
+        canvas.style.display = 'block';
+      }
+    }
+
+    function buildColorScale(primary){
+      return [
+        [0, '#e2e8f0'],
+        [0.2, '#93c5fd'],
+        [0.4, primary],
+        [0.7, '#7c3aed'],
+        [1, '#0f172a']
+      ];
+    }
+
+    function normalizeValues(values){
+      return (values || []).map((v) => Number(v || 0));
+    }
+
+    function absoluteValues(values){
+      return normalizeValues(values).map((v) => Math.abs(v));
+    }
+
+    function computeZSeries(values){
+      const normalized = normalizeValues(values);
+      return normalized.map((v, idx) => Math.abs(v) + (idx + 1) * 8);
+    }
+
+    function destroyChartAndPlotly(chartId){
+      if(chartRefs[chartId]) chartRefs[chartId].destroy();
+      const { plotlyEl } = getChartElements(chartId);
+      if(plotlyEl && window.Plotly) Plotly.purge(plotlyEl);
+    }
+
+    function getChartSeries(chartId){
+      const def = CHART_DEFS[chartId];
+      const charts = latestAnalyticsPayload.charts || {};
+      const source = charts[def?.dataKey] || [];
+      const labels = source.map((i) => i[def.labelKey]);
+      const values = source.map((i) => i[def.valueKey]);
+      return { labels, values };
+    }
+
+    function getSelectedChartOptions(chartId){
+      const pref = chartPreferences[chartId] || {};
+      return {
+        category: pref.category || byId(`${chartId}Category`)?.value || CHART_DEFS[chartId].defaultCategory || '2d',
+        type: pref.type || byId(`${chartId}Type`)?.value || CHART_DEFS[chartId].defaultType,
+        color: pref.color || byId(`${chartId}Color`)?.value || '#4f46e5'
+      };
+    }
+
+    function renderPlotlyCardChart(chartId, opts, labels, values){
+      const { plotlyEl } = getChartElements(chartId);
+      if(!plotlyEl || !window.Plotly) return;
+
+      const parsedType = parseModernType(opts.type);
+      const baseType = parsedType.base;
+      const variant = parsedType.variant;
+
+      const x = labels.length ? labels : ['No Data'];
+      const y = normalizeValues(values.length ? values : [0]);
+      const z = computeZSeries(y);
+      const color = opts.color || '#4f46e5';
+      const absY = absoluteValues(y);
+      const idx = x.map((_, i) => i + 1);
+      let data = [];
+      let layout = {
+        title: { text: baseType.replaceAll('_', ' ').toUpperCase(), font: { size: 16 } },
+        margin: { l: 56, r: 20, t: 56, b: 56 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        font: { size: 13, color: '#0f172a' },
+        xaxis: { tickfont: { size: 12 }, automargin: true },
+        yaxis: { tickfont: { size: 12 }, automargin: true }
+      };
+
+      const variantLineWidth = variant === 'institutional' ? 4 : variant === 'pro' ? 3 : 2;
+      const variantMarkerSize = variant === 'institutional' ? 7 : variant === 'pro' ? 6 : 5;
+      const variantOpacity = variant === 'institutional' ? 0.92 : variant === 'pro' ? 0.84 : 0.75;
+
+      const sharedRenderer = window.SmartTradeCharts && window.SmartTradeCharts.renderFinancialPlotly;
+      if(sharedRenderer){
+        const rendered = sharedRenderer({
+          plotlyEl,
+          baseType,
+          variant,
+          labels: x,
+          values: y,
+          depth: z,
+          color,
+          title: baseType.replaceAll('_', ' ').toUpperCase()
+        });
+        if(rendered) return;
+      }
+
+      switch(baseType){
+        case 'surface3d':
+          data = [{ type: 'surface', z: [y, z, y.map((v, i) => (v + z[i]) / 2)], colorscale: buildColorScale(color) }];
+          layout.scene = {
+            xaxis: { title: 'Index', tickfont: { size: 11 } },
+            yaxis: { title: 'Series', tickfont: { size: 11 } },
+            zaxis: { title: 'Value', tickfont: { size: 11 } }
+          };
+          break;
+        case 'scatter3d':
+          data = [{ type: 'scatter3d', mode: 'markers+lines', x: idx, y, z, marker: { size: variantMarkerSize, color: y, colorscale: 'Turbo' }, line: { color, width: variantLineWidth + 1 }, text: x }];
+          layout.scene = {
+            xaxis: { title: 'Index', tickfont: { size: 11 } },
+            yaxis: { title: 'Value', tickfont: { size: 11 } },
+            zaxis: { title: 'Depth', tickfont: { size: 11 } }
+          };
+          break;
+        case 'mesh3d':
+          data = [{ type: 'mesh3d', x: idx, y, z, intensity: y, opacity: variantOpacity, color }];
+          layout.scene = {
+            xaxis: { title: 'Index', tickfont: { size: 11 } },
+            yaxis: { title: 'Value', tickfont: { size: 11 } },
+            zaxis: { title: 'Depth', tickfont: { size: 11 } }
+          };
+          break;
+        case 'line3d':
+          data = [{ type: 'scatter3d', mode: 'lines+markers', x: idx, y, z, line: { color, width: variantLineWidth + 3 }, marker: { size: variantMarkerSize - 1, color: '#06b6d4' }, text: x }];
+          layout.scene = {
+            xaxis: { title: 'Index', tickfont: { size: 11 } },
+            yaxis: { title: 'Value', tickfont: { size: 11 } },
+            zaxis: { title: 'Depth', tickfont: { size: 11 } }
+          };
+          break;
+        case 'bar3d':
+          data = [{ type: 'scatter3d', mode: 'markers', x: idx, y: idx.map(() => 0), z: absY, marker: { size: variantMarkerSize + 3, symbol: 'square', color } }];
+          layout.scene = {
+            xaxis: { title: 'Index', tickfont: { size: 11 } },
+            yaxis: { title: 'Base', tickfont: { size: 11 } },
+            zaxis: { title: 'Height', tickfont: { size: 11 } }
+          };
+          break;
+        case 'heatmap':
+          data = [{ type: 'heatmap', x, y: ['Value', 'Depth'], z: [y, z], colorscale: buildColorScale(color) }];
+          break;
+        case 'contour':
+          data = [{ type: 'contour', x, y: ['Value', 'Depth'], z: [y, z], colorscale: buildColorScale(color) }];
+          break;
+        case 'candlestick_like':
+          data = [{ type: 'candlestick', x, open: y.map((v) => v * 0.96), high: y.map((v) => v * 1.08), low: y.map((v) => v * 0.92), close: y }];
+          break;
+        case 'waterfall_like':
+          data = [{ type: 'waterfall', x, y, connector: { line: { color: '#64748b' } }, increasing: { marker: { color } }, decreasing: { marker: { color: '#ef4444' } } }];
+          break;
+        case 'volume_combo':
+          data = [
+            { type: 'bar', x, y: absY.map((v) => Math.max(1, Math.round(v * 12))), name: 'Volume (simulated)', marker: { color: '#06b6d4' } },
+            { type: 'scatter', x, y, mode: 'lines+markers', name: 'Price/P&L', line: { color, width: 3 }, yaxis: 'y2' }
+          ];
+          layout.yaxis = { title: 'Volume', tickfont: { size: 12 }, automargin: true };
+          layout.yaxis2 = { title: 'Price/P&L', overlaying: 'y', side: 'right', tickfont: { size: 12 }, automargin: true };
+          break;
+        case 'macd_like': {
+          const signal = y.map((v, i) => (v + (y[i - 1] || v)) / 2);
+          const hist = y.map((v, i) => v - signal[i]);
+          data = [
+            { type: 'scatter', x, y, mode: 'lines', name: 'MACD', line: { color, width: 3 } },
+            { type: 'scatter', x, y: signal, mode: 'lines', name: 'Signal', line: { color: '#f59e0b', width: 2, dash: 'dot' } },
+            { type: 'bar', x, y: hist, name: 'Histogram', marker: { color: '#22c55e' }, opacity: 0.55 }
+          ];
+          break;
+        }
+        case 'whatif_tree':
+          data = [{ type: 'treemap', labels: ['Base', ...x], parents: ['', ...x.map(() => 'Base')], values: [absY.reduce((a,b)=>a+b,0), ...absY], marker: { colorscale: 'Blues' } }];
+          break;
+        case 'scenario_fan': {
+          const optimistic = y.map((v, i) => v + (i + 1) * 0.8);
+          const pessimistic = y.map((v, i) => v - (i + 1) * 0.8);
+          data = [
+            { type: 'scatter', x, y: optimistic, mode: 'lines', name: 'Optimistic', line: { color: '#16a34a', width: variantLineWidth } },
+            { type: 'scatter', x, y, mode: 'lines', name: 'Base', line: { color, width: variantLineWidth + 1 } },
+            { type: 'scatter', x, y: pessimistic, mode: 'lines', name: 'Pessimistic', line: { color: '#dc2626', width: variantLineWidth } }
+          ];
+          break;
+        }
+        case 'sensitivity_tornado':
+          data = [{ type: 'bar', y: x, x: y.map((v)=>Math.abs(v)), orientation: 'h', marker: { color } }];
+          break;
+        case 'break_even_surface':
+          data = [{ type: 'surface', z: [y, z, y.map((v, i) => (v + z[i]) / 2)], colorscale: 'Electric' }];
+          layout.scene = { xaxis: { title: 'Risk' }, yaxis: { title: 'Return' }, zaxis: { title: 'Break-even' } };
+          break;
+        case 'position_sizing_matrix':
+          data = [{ type: 'heatmap', x, y: ['Low Risk','Medium Risk','High Risk'], z: [absY, z, absY.map((v,i)=>(v+z[i])/2)], colorscale: 'Viridis' }];
+          break;
+        case 'stoploss_takeprofit_map':
+          data = [{ type: 'scatter', x: z, y: y, mode: 'markers', marker: { color: y, size: z.map((v)=>Math.max(10,Math.min(25,v/3))), colorscale: 'Turbo' }, text: x }];
+          layout.xaxis.title = 'Take Profit Distance';
+          layout.yaxis.title = 'Stop Loss Distance';
+          break;
+        case 'monte_carlo_like': {
+          const simulations = Array.from({ length: 12 }, (_, s) => ({
+            type: 'scatter',
+            mode: 'lines',
+            x,
+            y: y.map((v, i) => v + ((s - 6) * 0.6) + (Math.sin(i + s) * 0.8)),
+            line: { width: 1, color: `rgba(79,70,229,${0.16 + (s * 0.03)})` },
+            showlegend: false
+          }));
+          data = simulations;
+          break;
+        }
+        case 'risk_return_frontier':
+          data = [{ type: 'scatter', mode: 'markers+lines', x: z, y, marker: { size: variantMarkerSize + 2, color: y, colorscale: 'RdYlGn' }, line: { color, width: variantLineWidth }, text: x }];
+          layout.xaxis.title = 'Risk';
+          layout.yaxis.title = 'Expected Return';
+          break;
+        case 'bubble':
+          data = [{ type: 'scatter', x, y, mode: 'markers', marker: { color, size: z.map((v) => Math.max(9, Math.min(26, v / 5))), opacity: variantOpacity } }];
+          break;
+        case 'scatter':
+          data = [{ type: 'scatter', x, y, mode: 'markers', marker: { color, size: 10 } }];
+          break;
+        default:
+            data = [{ type: 'scatter', x, y, mode: 'lines+markers', line: { color, width: variantLineWidth }, marker: { size: variantMarkerSize + 1 } }];
+      }
+
+      Plotly.newPlot(plotlyEl, data, layout, { responsive: true, displayModeBar: true });
+    }
+
+    function drawConfiguredChart(chartId){
+      const def = CHART_DEFS[chartId];
+      if(!def) return;
+      const { labels, values } = getChartSeries(chartId);
+      const opts = getSelectedChartOptions(chartId);
+
+      const parsedType = parseModernType(opts.type);
+      const normalizedType = parsedType.base;
+
+      const plotlyTypes = new Set([
+        'surface3d','scatter3d','mesh3d','line3d','bar3d','heatmap','contour',
+        'candlestick_like','waterfall_like','volume_combo','macd_like','scatter','bubble',
+        'whatif_tree','scenario_fan','sensitivity_tornado','break_even_surface','position_sizing_matrix',
+        'stoploss_takeprofit_map','monte_carlo_like','risk_return_frontier'
+      ]);
+
+      const shouldUsePlotly = opts.category === '3d' || opts.category === 'heatmap' || opts.category === 'stock' || opts.category === 'decision' || plotlyTypes.has(normalizedType);
+
+      destroyChartAndPlotly(chartId);
+
+      if(shouldUsePlotly){
+        setCardRenderMode(chartId, 'plotly');
+        renderPlotlyCardChart(chartId, opts, labels, values);
+        setChartMessage(chartId, `Applied ${opts.category.toUpperCase()} • ${normalizedType.replaceAll('_',' ').toUpperCase()}`, true);
+        return;
+      }
+
+      setCardRenderMode(chartId, 'chartjs');
+      const chartJsType = mapUiTypeToChartJsType(opts.type);
+      const canvas = byId(chartId);
+      if(!canvas) return;
+
+      chartRefs[chartId] = new Chart(canvas, {
+        type: chartJsType,
+        data: {
+          labels: labels.length ? labels : ['No Data'],
+          datasets: [{
+            label: def.dataKey,
+            data: values.length ? values : [0],
+            backgroundColor: ['pie','doughnut','polarArea'].includes(chartJsType)
+              ? [opts.color, '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#7c3aed', '#14b8a6', '#f97316']
+              : opts.color,
+            borderColor: opts.color,
+            borderWidth: 1.2,
+            fill: normalizedType === 'area',
+            tension: 0.28,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 350 },
+          plugins: { legend: { display: true, labels: { font: { size: 13, weight: '700' } } } },
+          scales: ['pie','doughnut','polarArea','radar'].includes(chartJsType)
+            ? {}
+            : {
+              x: { ticks: { font: { size: 12, weight: '600' } } },
+              y: { ticks: { font: { size: 12, weight: '600' } } }
+            }
+        }
+      });
+      setChartMessage(chartId, `Applied 2D • ${normalizedType.replaceAll('_',' ').toUpperCase()}`, true);
+    }
+
+    function populateTypeOptions(chartId){
+      const categorySel = byId(`${chartId}Category`);
+      const typeSel = byId(`${chartId}Type`);
+      if(!categorySel || !typeSel) return;
+      const def = CHART_DEFS[chartId] || {};
+      const category = categorySel.value || '2d';
+      const current = typeSel.value;
+      const allowedBase = new Set(def.allowedBase || []);
+      let options = getModernTypesForCategory(category).filter((opt) => {
+        const parsed = parseModernType(opt.value);
+        return !allowedBase.size || allowedBase.has(parsed.base);
+      });
+      if(!options.length){
+        options = getModernTypesForCategory(def.defaultCategory || '2d').filter((opt) => {
+          const parsed = parseModernType(opt.value);
+          return !allowedBase.size || allowedBase.has(parsed.base);
+        });
+      }
+      if(!options.length && def.defaultType){
+        const parsed = parseModernType(def.defaultType);
+        options = [{ value: def.defaultType, label: `${parsed.base.replaceAll('_', ' ').toUpperCase()} (${parsed.variant.toUpperCase()})` }];
+      }
+      typeSel.innerHTML = '';
+      options.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        typeSel.appendChild(o);
+      });
+      const hint = byId(`${chartId}TypeHint`);
+      if(hint) hint.textContent = `Showing ${options.length} relevant type${options.length === 1 ? '' : 's'}`;
+      if(options.some((o) => o.value === current)) typeSel.value = current;
+      else if(options.some((o) => o.value === def.defaultType)) typeSel.value = def.defaultType;
+      else if(typeSel.options.length) typeSel.selectedIndex = 0;
+    }
+
+    function getAvailableCategoriesForChart(chartId){
+      const def = CHART_DEFS[chartId] || {};
+      const allowedBase = new Set(def.allowedBase || []);
+      return CHART_CATEGORIES.filter((category) => {
+        const options = getModernTypesForCategory(category.value).filter((opt) => {
+          const parsed = parseModernType(opt.value);
+          return !allowedBase.size || allowedBase.has(parsed.base);
+        });
+        return options.length > 0;
+      });
+    }
+
+    function toggleChartExpand(chartId, expanded){
+      const card = byId(chartId)?.closest('.chart-card');
+      if(!card) return;
+      card.classList.toggle('expanded', Boolean(expanded));
+      const expandBtn = byId(`${chartId}Expand`);
+      const cancelBtn = byId(`${chartId}CancelExpand`);
+      if(expandBtn) expandBtn.style.display = expanded ? 'none' : '';
+      if(cancelBtn) cancelBtn.style.display = expanded ? '' : 'none';
+      setTimeout(() => {
+        if(chartRefs[chartId]) chartRefs[chartId].resize();
+        const plotlyEl = byId(`${chartId}Plotly`);
+        if(plotlyEl && plotlyEl.style.display !== 'none' && window.Plotly && Plotly.Plots) Plotly.Plots.resize(plotlyEl);
+      }, 50);
+    }
+
+    function initializeChartControls(){
+      const cards = Array.from(document.querySelectorAll('.chart-card'));
+      cards.forEach((card) => {
+        const canvas = card.querySelector('canvas');
+        if(!canvas) return;
+        const chartId = canvas.id;
+        if(!CHART_DEFS[chartId]) return;
+        if(byId(`${chartId}Category`)) return;
+
+        const controls = document.createElement('div');
+        controls.className = 'chart-controls';
+        controls.innerHTML = `
+          <label>Category<select id="${chartId}Category"></select></label>
+          <label>Graph Type<select id="${chartId}Type"></select><small id="${chartId}TypeHint" class="chart-type-hint"></small></label>
+          <label>Color<input id="${chartId}Color" type="color" value="#4f46e5" /></label>
+          <button id="${chartId}Apply" class="primary small" type="button">Apply</button>
+          <button id="${chartId}Expand" class="ghost small" type="button">Expand</button>
+          <button id="${chartId}CancelExpand" class="ghost small" type="button" style="display:none">Cancel</button>
+        `;
+        const msg = document.createElement('div');
+        msg.className = 'chart-msg';
+        msg.id = `${chartId}Msg`;
+
+        const surface = document.createElement('div');
+        surface.className = 'chart-surface';
+        const plotlyEl = document.createElement('div');
+        plotlyEl.id = `${chartId}Plotly`;
+        plotlyEl.className = 'chart-plotly';
+
+        const originalCanvasParent = canvas.parentElement;
+        if(originalCanvasParent) originalCanvasParent.removeChild(canvas);
+        surface.appendChild(canvas);
+        surface.appendChild(plotlyEl);
+
+        const heading = card.querySelector('h4');
+        if(heading) heading.insertAdjacentElement('afterend', controls);
+        else card.prepend(controls);
+        controls.insertAdjacentElement('afterend', msg);
+        msg.insertAdjacentElement('afterend', surface);
+
+        const categorySel = byId(`${chartId}Category`);
+        const availableCategories = getAvailableCategoriesForChart(chartId);
+        availableCategories.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.value;
+          opt.textContent = c.label;
+          categorySel.appendChild(opt);
+        });
+
+        const defaultCategory = CHART_DEFS[chartId].defaultCategory || '2d';
+        if([...categorySel.options].some((opt) => opt.value === defaultCategory)) categorySel.value = defaultCategory;
+        else if(categorySel.options.length) categorySel.selectedIndex = 0;
+        populateTypeOptions(chartId);
+        byId(`${chartId}Type`).value = CHART_DEFS[chartId].defaultType;
+
+        byId(`${chartId}Category`).addEventListener('change', () => {
+          populateTypeOptions(chartId);
+          const pref = chartPreferences[chartId] || {};
+          pref.category = byId(`${chartId}Category`).value;
+          pref.type = byId(`${chartId}Type`).value;
+          pref.color = byId(`${chartId}Color`).value;
+          chartPreferences[chartId] = pref;
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Apply`).addEventListener('click', () => {
+          chartPreferences[chartId] = {
+            category: byId(`${chartId}Category`).value,
+            type: byId(`${chartId}Type`).value,
+            color: byId(`${chartId}Color`).value
+          };
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Type`).addEventListener('change', () => {
+          const pref = chartPreferences[chartId] || {};
+          pref.category = byId(`${chartId}Category`).value;
+          pref.type = byId(`${chartId}Type`).value;
+          pref.color = byId(`${chartId}Color`).value;
+          chartPreferences[chartId] = pref;
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Color`).addEventListener('input', () => {
+          const pref = chartPreferences[chartId] || {};
+          pref.category = byId(`${chartId}Category`).value;
+          pref.type = byId(`${chartId}Type`).value;
+          pref.color = byId(`${chartId}Color`).value;
+          chartPreferences[chartId] = pref;
+          drawConfiguredChart(chartId);
+        });
+
+        byId(`${chartId}Expand`).addEventListener('click', () => toggleChartExpand(chartId, true));
+        byId(`${chartId}CancelExpand`).addEventListener('click', () => toggleChartExpand(chartId, false));
+      });
+    }
+
+    function drawAllConfiguredCharts(){
+      Object.keys(CHART_DEFS).forEach((chartId) => drawConfiguredChart(chartId));
+    }
+
+    function renderAnalytics(analytics){
+      latestAnalyticsPayload = analytics || {};
+      drawAllConfiguredCharts();
+
+      const adv = analytics.advanced || {};
+      const wrap = byId('advancedAnalytics');
+      wrap.innerHTML = '';
+      const items = [
+        ['Maximum Drawdown', currency(adv.maximum_drawdown)],
+        ['Portfolio Concentration %', `${Number(adv.portfolio_concentration_pct || 0).toFixed(2)}%`],
+        ['Largest Winning Stock', adv.largest_winning_stock ? `${adv.largest_winning_stock.symbol} (${currency(adv.largest_winning_stock.value)})` : '-'],
+        ['Largest Losing Stock', adv.largest_losing_stock ? `${adv.largest_losing_stock.symbol} (${currency(adv.largest_losing_stock.value)})` : '-'],
+        ['Average Holding Period', `${Number(adv.average_holding_period || 0).toFixed(2)} days`],
+        ['Sharpe Ratio', adv.sharpe_ratio_placeholder ?? 'Coming soon'],
+        ['Volatility', adv.volatility_placeholder ?? 'Coming soon']
+      ];
+      items.forEach(([k,v]) => {
+        const box = document.createElement('div');
+        box.className = 'card';
+        box.innerHTML = `<h4 style="margin:0 0 6px 0;font-size:14px">${k}</h4><div class="muted font-md">${v}</div>`;
+        wrap.appendChild(box);
+      });
+
+      renderGraphLab();
+    }
+
+    const GRAPH_TYPES = (() => {
+      if(window.SmartTradeCharts && window.SmartTradeCharts.getModernGraphCatalog){
+        const catalog = window.SmartTradeCharts.getModernGraphCatalog();
+        return Object.values(catalog).flat().map((item) => item.value);
+      }
+      return [
+        'line','spline','step','bar','grouped_bar','stacked_bar','horizontal_bar','area','stacked_area','scatter',
+        'bubble','histogram','box','violin','candlestick_like','waterfall_like','funnel_like','radar','polar','pie',
+        'donut','sunburst_like','heatmap','contour','surface3d','mesh3d','scatter3d','line3d','bar3d_like','spiral3d'
+      ];
+    })();
+
+    function ensureGraphControls(){
+      const typeSelect = byId('graphTypeSelect');
+      if(typeSelect && !typeSelect.options.length){
+        GRAPH_TYPES.forEach((type) => {
+          const opt = document.createElement('option');
+          opt.value = type;
+          const parsed = parseModernType(type);
+          opt.textContent = `${parsed.base.replaceAll('_', ' ').toUpperCase()} (${parsed.variant.toUpperCase()})`;
+          typeSelect.appendChild(opt);
+        });
+        const defaultType = GRAPH_TYPES.includes('candlestick_like__institutional') ? 'candlestick_like__institutional' : (GRAPH_TYPES[0] || 'line');
+        const defaultOpt = [...typeSelect.options].find((opt) => opt.value === defaultType);
+        if(defaultOpt) defaultOpt.selected = true;
+      }
+    }
+
+    function getSelectedGraphTypes(){
+      const select = byId('graphTypeSelect');
+      if(!select) return ['line'];
+      const selected = [...select.options].filter((opt) => opt.selected).map((opt) => opt.value);
+      if(selected.length) return selected;
+      if(select.value) return [select.value];
+      return ['line'];
+    }
+
+    function setGraphLabMessage(message){
+      const el = byId('graphLabMsg');
+      if(el) el.textContent = message || '';
+    }
+
+    function selectAllGraphIndicators(){
+      const select = byId('graphTypeSelect');
+      if(!select) return;
+      [...select.options].forEach((opt) => { opt.selected = true; });
+      renderGraphLab();
+    }
+
+    function clearGraphIndicators(){
+      const select = byId('graphTypeSelect');
+      if(!select) return;
+      [...select.options].forEach((opt, idx) => { opt.selected = idx === 0; });
+      renderGraphLab();
+    }
+
+    function graphSma(values, period){
+      const p = Math.max(1, Number(period || 1));
+      return values.map((_, index) => {
+        const start = Math.max(0, index - p + 1);
+        const slice = values.slice(start, index + 1);
+        const sum = slice.reduce((acc, item) => acc + Number(item || 0), 0);
+        return sum / slice.length;
+      });
+    }
+
+    function graphEma(values, period){
+      const p = Math.max(1, Number(period || 1));
+      const k = 2 / (p + 1);
+      const out = [];
+      values.forEach((value, index) => {
+        const current = Number(value || 0);
+        if(index === 0) out.push(current);
+        else out.push((current * k) + (out[index - 1] * (1 - k)));
+      });
+      return out;
+    }
+
+    function graphRsi(values, period = 14){
+      if(!values.length) return [];
+      const p = Math.max(2, Number(period || 14));
+      const gains = [0];
+      const losses = [0];
+      for(let i = 1; i < values.length; i += 1){
+        const diff = Number(values[i] || 0) - Number(values[i - 1] || 0);
+        gains.push(Math.max(0, diff));
+        losses.push(Math.max(0, -diff));
+      }
+      const avgGain = graphSma(gains, p);
+      const avgLoss = graphSma(losses, p);
+      return avgGain.map((g, i) => {
+        const l = avgLoss[i] || 0.000001;
+        const rs = g / l;
+        return 100 - (100 / (1 + rs));
+      });
+    }
+
+    function getGraphKeys(){
+      return Array.from(new Map([...allActiveRows, ...allClosedRows].map((r) => [getPositionKey(r), getPositionLabel(r)])).entries())
+        .filter(([k]) => k && !k.startsWith('__'));
+    }
+
+    function refreshGraphStockOptions(){
+      const select = byId('graphStockSelect');
+      if(!select) return;
+      const current = select.value;
+      const keys = getGraphKeys();
+      select.innerHTML = '';
+      keys.forEach(([key, label]) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = label;
+        select.appendChild(opt);
+      });
+      if([...select.options].some((o) => o.value === current)) select.value = current;
+      else if(select.options.length) select.selectedIndex = 0;
+    }
+
+    function getRowsForGraph(key){
+      if(!key) return [];
+      const active = allActiveRows.filter((r) => getPositionKey(r) === key).map((r, idx) => ({
+        idx: idx + 1,
+        x: idx + 1,
+        y: Number(r.total_pnl || 0),
+        z: Number(r.exposure || 0),
+        symbol: r.symbol,
+        date: r.latest_trade_date || new Date().toISOString(),
+        qty: Number(r.quantity || 0)
+      }));
+      const closed = allClosedRows.filter((r) => getPositionKey(r) === key).map((r, idx) => ({
+        idx: active.length + idx + 1,
+        x: active.length + idx + 1,
+        y: Number(r.realized_pnl || 0),
+        z: Number(r.total_sell_value || 0),
+        symbol: r.symbol,
+        date: r.closed_at || new Date().toISOString(),
+        qty: Number(r.execution_quantity || 0)
+      }));
+      const combined = [...active, ...closed];
+      if(combined.length < 3){
+        const fallback = allActiveRows.slice(0, 12).map((r, i) => ({
+          idx: i + 1,
+          x: i + 1,
+          y: Number(r.total_pnl || 0),
+          z: Number(r.exposure || 0),
+          symbol: r.symbol,
+          date: r.latest_trade_date || new Date().toISOString(),
+          qty: Number(r.quantity || 0)
+        }));
+        return fallback;
+      }
+      return combined;
+    }
+
+    function buildGraphLabIndicatorTraces(baseType, x, y, z){
+      switch(baseType){
+        case 'sma_overlay':
+          return [{ type:'scatter', x, y:graphSma(y, 14), mode:'lines', name:'SMA 14', line:{ color:'#06b6d4', width:2 } }];
+        case 'ema_overlay':
+          return [{ type:'scatter', x, y:graphEma(y, 14), mode:'lines', name:'EMA 14', line:{ color:'#22c55e', width:2 } }];
+        case 'bollinger_like': {
+          const mid = graphSma(y, 20);
+          const std = y.map((_, i) => {
+            const start = Math.max(0, i - 19);
+            const slice = y.slice(start, i + 1);
+            const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
+            const variance = slice.reduce((a, b) => a + ((b - mean) ** 2), 0) / slice.length;
+            return Math.sqrt(variance);
+          });
+          const upper = mid.map((m, i) => m + (2 * std[i]));
+          const lower = mid.map((m, i) => m - (2 * std[i]));
+          return [
+            { type:'scatter', x, y:upper, mode:'lines', name:'Bollinger Upper', line:{ color:'#16a34a', width:1 } },
+            { type:'scatter', x, y:lower, mode:'lines', name:'Bollinger Lower', line:{ color:'#ef4444', width:1 } }
+          ];
+        }
+        case 'macd_like': {
+          const ema12 = graphEma(y, 12);
+          const ema26 = graphEma(y, 26);
+          const macd = ema12.map((v, i) => v - ema26[i]);
+          const signal = graphEma(macd, 9);
+          return [
+            { type:'scatter', x, y:macd, mode:'lines', name:'MACD', line:{ color:'#7c3aed', width:2 } },
+            { type:'scatter', x, y:signal, mode:'lines', name:'Signal', line:{ color:'#f59e0b', width:2, dash:'dot' } }
+          ];
+        }
+        case 'rsi_like':
+          return [{ type:'scatter', x, y:graphRsi(y, 14), mode:'lines', name:'RSI', line:{ color:'#2563eb', width:2 } }];
+        case 'stochastic_like': {
+          const low14 = y.map((_, i) => Math.min(...y.slice(Math.max(0, i - 13), i + 1)));
+          const high14 = y.map((_, i) => Math.max(...y.slice(Math.max(0, i - 13), i + 1)));
+          const k = y.map((v, i) => ((v - low14[i]) / Math.max(0.00001, high14[i] - low14[i])) * 100);
+          return [{ type:'scatter', x, y:k, mode:'lines', name:'Stochastic %K', line:{ color:'#0ea5e9', width:2 } }];
+        }
+        case 'vwap_like': {
+          const absY = y.map((v) => Math.abs(v));
+          const cumVol = absY.reduce((arr, v, i) => { arr.push((arr[i - 1] || 0) + v); return arr; }, []);
+          const cumPv = y.reduce((arr, v, i) => { arr.push((arr[i - 1] || 0) + (v * absY[i])); return arr; }, []);
+          const vwap = cumPv.map((v, i) => v / Math.max(1, cumVol[i]));
+          return [{ type:'scatter', x, y:vwap, mode:'lines', name:'VWAP', line:{ color:'#10b981', width:2 } }];
+        }
+        case 'atr_like': {
+          const tr = y.map((v, i) => i === 0 ? 0 : Math.abs(v - y[i - 1]));
+          return [{ type:'scatter', x, y:graphSma(tr, 14), mode:'lines', name:'ATR', line:{ color:'#ef4444', width:2 } }];
+        }
+        case 'mfi_like': {
+          const moneyFlow = y.map((v, i) => v * Math.max(1, Math.abs(z[i] || 1)));
+          return [{ type:'scatter', x, y:graphRsi(moneyFlow, 14), mode:'lines', name:'MFI', line:{ color:'#14b8a6', width:2 } }];
+        }
+        case 'roc_like':
+          return [{ type:'scatter', x, y:y.map((v, i) => i === 0 ? 0 : ((v - y[i - 1]) / Math.max(0.00001, y[i - 1])) * 100), mode:'lines', name:'ROC', line:{ color:'#f97316', width:2 } }];
+        case 'cci_like': {
+          const mean = graphSma(y, 20);
+          const md = y.map((v, i) => Math.abs(v - mean[i]));
+          const cci = y.map((v, i) => (v - mean[i]) / Math.max(0.00001, 0.015 * (md[i] || 1)));
+          return [{ type:'scatter', x, y:cci, mode:'lines', name:'CCI', line:{ color:'#8b5cf6', width:2 } }];
+        }
+        case 'obv_like': {
+          const obv = [];
+          y.forEach((v, i) => {
+            const vol = Math.max(1, Math.abs(z[i] || 1));
+            if(i === 0) obv.push(vol);
+            else obv.push((obv[i - 1] || 0) + (v >= y[i - 1] ? vol : -vol));
+          });
+          return [{ type:'scatter', x, y:obv, mode:'lines', name:'OBV', line:{ color:'#0ea5e9', width:2 } }];
+        }
+        case 'donchian_channel_like': {
+          const upper = y.map((_, i) => Math.max(...y.slice(Math.max(0, i - 19), i + 1)));
+          const lower = y.map((_, i) => Math.min(...y.slice(Math.max(0, i - 19), i + 1)));
+          return [
+            { type:'scatter', x, y:upper, mode:'lines', name:'Donchian Upper', line:{ color:'#16a34a', width:1 } },
+            { type:'scatter', x, y:lower, mode:'lines', name:'Donchian Lower', line:{ color:'#dc2626', width:1 } }
+          ];
+        }
+        case 'force_index_like':
+          return [{ type:'bar', x, y:y.map((v, i) => i === 0 ? 0 : (v - y[i - 1]) * Math.max(1, Math.abs(z[i] || 1))), name:'Force Index', marker:{ color:'#4f46e5' }, opacity:0.45 }];
+        case 'parabolic_sar_like': {
+          const sar = y.map((v, i) => v + ((i % 2 === 0 ? -1 : 1) * Math.abs(v) * 0.015));
+          return [{ type:'scatter', x, y:sar, mode:'markers', name:'Parabolic SAR', marker:{ color:'#ef4444', size:6 } }];
+        }
+        case 'ichimoku_like': {
+          const tenkan = graphSma(y, 9);
+          const kijun = graphSma(y, 26);
+          return [
+            { type:'scatter', x, y:tenkan, mode:'lines', name:'Tenkan', line:{ color:'#22c55e', width:2 } },
+            { type:'scatter', x, y:kijun, mode:'lines', name:'Kijun', line:{ color:'#f59e0b', width:2 } }
+          ];
+        }
+        default:
+          return null;
+      }
+    }
+
+    function renderGraphLab(){
+      ensureGraphControls();
+      refreshGraphStockOptions();
+      const stockKey = byId('graphStockSelect')?.value;
+      const selectedTypes = getSelectedGraphTypes();
+      const type = selectedTypes[0] || 'line';
+      const color = byId('graphColorPicker')?.value || '#4f46e5';
+      const parsedType = parseModernType(type);
+      const normalizedType = parsedType.base;
+      const variant = parsedType.variant;
+      const points = getRowsForGraph(stockKey);
+      const el = byId('plotlyGraph');
+      if(!el) return;
+      if(!points.length){
+        Plotly.newPlot(el, [{ x:[0], y:[0], type:'scatter', mode:'lines', line:{ color } }], { title:'No Data' }, {responsive:true, displayModeBar:true});
+        return;
+      }
+
+      const x = points.map((p) => p.x);
+      const y = points.map((p) => p.y);
+      const z = points.map((p) => p.z);
+      const labels = points.map((p) => `${p.symbol} | ${dateOnly(p.date)} | qty ${p.qty}`);
+
+      let data = [];
+      let layout = {
+        title: `Graph Lab: ${normalizedType.replaceAll('_', ' ').toUpperCase()} (${variant.toUpperCase()})`,
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        margin: { l: 45, r: 20, t: 50, b: 42 }
+      };
+
+      const variantLineWidth = variant === 'institutional' ? 4 : variant === 'pro' ? 3 : 2;
+      const variantOpacity = variant === 'institutional' ? 0.92 : variant === 'pro' ? 0.84 : 0.75;
+
+      const baseScatter = { x, y, text: labels, hovertemplate: '%{text}<br>Value: %{y}<extra></extra>' };
+
+      switch(normalizedType){
+        case 'line': data = [{ ...baseScatter, type:'scatter', mode:'lines', line:{ color, width:variantLineWidth } }]; break;
+        case 'spline': data = [{ ...baseScatter, type:'scatter', mode:'lines', line:{ color, width:variantLineWidth, shape:'spline' } }]; break;
+        case 'step': data = [{ ...baseScatter, type:'scatter', mode:'lines', line:{ color, width:variantLineWidth, shape:'hv' } }]; break;
+        case 'bar': data = [{ x, y, type:'bar', marker:{ color } }]; break;
+        case 'grouped_bar': data = [{ x, y, type:'bar', name:'PNL', marker:{ color } }, { x, y:z, type:'bar', name:'Exposure', marker:{ color:'#06b6d4' } }]; layout.barmode='group'; break;
+        case 'stacked_bar': data = [{ x, y, type:'bar', marker:{ color } }, { x, y:z, type:'bar', marker:{ color:'#8b5cf6' } }]; layout.barmode='stack'; break;
+        case 'horizontal_bar': data = [{ y: labels, x:y, type:'bar', orientation:'h', marker:{ color } }]; break;
+        case 'area': data = [{ ...baseScatter, type:'scatter', mode:'lines', fill:'tozeroy', line:{ color, width:variantLineWidth } }]; break;
+        case 'stacked_area': data = [{ x, y, stackgroup:'one', type:'scatter', mode:'lines', line:{ color } }, { x, y:z, stackgroup:'one', type:'scatter', mode:'lines', line:{ color:'#06b6d4' } }]; break;
+        case 'scatter': data = [{ ...baseScatter, type:'scatter', mode:'markers', marker:{ color, size:10 } }]; break;
+        case 'bubble': data = [{ ...baseScatter, type:'scatter', mode:'markers', marker:{ color, size: z.map(v=>Math.max(8,Math.min(34,Math.abs(v)/4000))), sizemode:'diameter', opacity:variantOpacity } }]; break;
+        case 'histogram': data = [{ x:y, type:'histogram', marker:{ color } }]; break;
+        case 'box': data = [{ y, type:'box', marker:{ color }, boxmean:true }]; break;
+        case 'violin': data = [{ y, type:'violin', line:{ color }, fillcolor:'rgba(79,70,229,0.18)', box:{ visible:true }, meanline:{ visible:true } }]; break;
+        case 'candlestick_like': data = [{ x, open:y.map(v=>v*0.95), high:y.map(v=>v*1.1), low:y.map(v=>v*0.9), close:y, type:'candlestick' }]; break;
+        case 'waterfall_like': data = [{ x:labels, y, type:'waterfall', connector:{ line:{ color:'#64748b' } }, increasing:{ marker:{ color } }, decreasing:{ marker:{ color:'#ef4444' } } }]; break;
+        case 'funnel_like': data = [{ y:labels, x:y.map(v=>Math.abs(v)), type:'funnel', marker:{ color } }]; break;
+        case 'radar': data = [{ type:'scatterpolar', r:y.map(v=>Math.abs(v)), theta:labels, fill:'toself', marker:{ color }, line:{ color } }]; break;
+        case 'polar': data = [{ type:'barpolar', r:y.map(v=>Math.abs(v)), theta:x.map(v=>v*20), marker:{ color } }]; break;
+        case 'pie': data = [{ type:'pie', labels, values:y.map(v=>Math.abs(v)), marker:{ colors:[color,'#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444'] } }]; break;
+        case 'donut': data = [{ type:'pie', hole:0.52, labels, values:y.map(v=>Math.abs(v)), marker:{ colors:[color,'#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444'] } }]; break;
+        case 'sunburst_like': data = [{ type:'sunburst', labels:['All',...labels], parents:['',...labels.map(()=> 'All')], values:[y.reduce((a,b)=>a+Math.abs(b),0), ...y.map(v=>Math.abs(v))] }]; break;
+        case 'heatmap': data = [{ z:[y,z], x, y:['P&L','Exposure'], type:'heatmap', colorscale:'Viridis' }]; break;
+        case 'contour': data = [{ z:[y,z], x, y:['P&L','Exposure'], type:'contour', colorscale:'Portland' }]; break;
+        case 'surface3d': data = [{ type:'surface', z:[y,z,y.map((v,i)=> (v+z[i])/2)] }]; layout.scene = { xaxis:{title:'Index'}, yaxis:{title:'Series'}, zaxis:{title:'Value'} }; break;
+        case 'mesh3d': data = [{ type:'mesh3d', x, y:y.map((_,i)=>i+1), z, intensity:y, color, opacity:0.75 }]; layout.scene = { xaxis:{title:'X'}, yaxis:{title:'Y'}, zaxis:{title:'Z'} }; break;
+        case 'scatter3d': data = [{ type:'scatter3d', mode:'markers', x, y, z, marker:{ size:5, color:y, colorscale:'Turbo' }, text:labels }]; layout.scene = { xaxis:{title:'Index'}, yaxis:{title:'P&L'}, zaxis:{title:'Exposure'} }; break;
+        case 'line3d': data = [{ type:'scatter3d', mode:'lines+markers', x, y, z, line:{ color, width:variantLineWidth + 2 }, marker:{ size:3, color:'#06b6d4' } }]; layout.scene = { xaxis:{title:'Index'}, yaxis:{title:'P&L'}, zaxis:{title:'Exposure'} }; break;
+        case 'bar3d_like': data = [{ type:'scatter3d', mode:'markers', x, y:y.map(()=>0), z, marker:{ size:8, color, symbol:'square' } }]; layout.scene = { xaxis:{title:'Index'}, yaxis:{title:'Base'}, zaxis:{title:'Height'} }; break;
+        case 'spiral3d': {
+          const t = x.map((v) => v / 2);
+          data = [{ type:'scatter3d', mode:'lines', x:t.map((n)=>Math.cos(n)*n), y:t.map((n)=>Math.sin(n)*n), z:y.map((v)=>v/Math.max(1,Math.abs(v))), line:{ color, width:5 } }];
+          layout.scene = { xaxis:{title:'X'}, yaxis:{title:'Y'}, zaxis:{title:'Z'} };
+          break;
+        }
+        case 'whatif_tree':
+          data = [{ type:'treemap', labels:['Base', ...labels], parents:['', ...labels.map(()=> 'Base')], values:[y.reduce((a,b)=>a+Math.abs(b),0), ...y.map(v=>Math.abs(v))] }];
+          break;
+        case 'scenario_fan': {
+          const optimistic = y.map((v, i) => v + (i + 1) * 0.8);
+          const pessimistic = y.map((v, i) => v - (i + 1) * 0.8);
+          data = [
+            { type:'scatter', x, y:optimistic, mode:'lines', name:'Optimistic', line:{ color:'#16a34a', width:variantLineWidth } },
+            { type:'scatter', x, y, mode:'lines', name:'Base', line:{ color, width:variantLineWidth + 1 } },
+            { type:'scatter', x, y:pessimistic, mode:'lines', name:'Pessimistic', line:{ color:'#dc2626', width:variantLineWidth } }
+          ];
+          break;
+        }
+        case 'risk_return_frontier':
+          data = [{ type:'scatter', mode:'markers+lines', x:z, y, marker:{ size:10, color:y, colorscale:'RdYlGn' }, line:{ color, width:variantLineWidth }, text:labels }];
+          layout.xaxis = { title: 'Risk' };
+          layout.yaxis = { title: 'Expected Return' };
+          break;
+        default: data = [{ ...baseScatter, type:'scatter', mode:'lines', line:{ color, width:3 } }];
+      }
+
+      const additional = selectedTypes.slice(1);
+      const appliedIndicators = [];
+      const skippedIndicators = [];
+      additional.forEach((typeValue) => {
+        const parsed = parseModernType(typeValue);
+        const traces = buildGraphLabIndicatorTraces(parsed.base, x, y, z);
+        if(traces && traces.length){
+          traces.forEach((trace) => data.push(trace));
+          appliedIndicators.push(parsed.base.replaceAll('_', ' ').toUpperCase());
+        } else {
+          skippedIndicators.push(parsed.base.replaceAll('_', ' ').toUpperCase());
+        }
+      });
+
+      if(appliedIndicators.length){
+        setGraphLabMessage(`Applied indicators: ${appliedIndicators.join(', ')}${skippedIndicators.length ? ` | Skipped unsupported overlays: ${skippedIndicators.join(', ')}` : ''}`);
+      } else if(skippedIndicators.length){
+        setGraphLabMessage(`No overlay added. Unsupported for overlay mode: ${skippedIndicators.join(', ')}`);
+      } else {
+        setGraphLabMessage('Tip: Use Ctrl/Cmd + click to select multiple graph indicators.');
+      }
+
+      Plotly.newPlot(el, data, layout, { responsive:true, displayModeBar:true });
+    }
+
+    function populateSymbolFilter(activeRows, closedRows){
+      const set = new Set(['all']);
+      activeRows.forEach((r) => set.add((r.symbol || '').toUpperCase()));
+      closedRows.forEach((r) => set.add((r.symbol || '').toUpperCase()));
+      const select = byId('filterSymbol');
+      const selected = select.value || 'all';
+      select.innerHTML = '';
+      Array.from(set).forEach((sym) => {
+        if(!sym) return;
+        const opt = document.createElement('option');
+        opt.value = sym.toLowerCase() === 'all' ? 'all' : sym;
+        opt.textContent = sym.toLowerCase() === 'all' ? 'All' : sym;
+        select.appendChild(opt);
+      });
+      if([...select.options].some(o => o.value === selected)) select.value = selected;
+    }
+
+    function renderMtfConfig(cfg){
+      currentMtfConfig = cfg || {};
+      byId('mtfDailyPct').value = Number(cfg.mtf_daily_interest_pct || 0);
+      byId('mtfTotalType').value = String(cfg.mtf_total_pct_type || 'simple').toLowerCase();
+      byId('mtfEffectiveFrom').value = dateOnly(cfg.effective_from);
+      byId('manualDefaultDaily').textContent = Number(cfg.mtf_daily_interest_pct || 0).toFixed(4);
+      byId('manualDefaultMultiplier').textContent = Number(cfg.mtf_leverage_multiplier || 1).toString();
+      byId('manualDefaultType').textContent = String(cfg.mtf_total_pct_type || 'simple');
+      byId('manualDefaultDate').textContent = dateOnly(cfg.effective_from) || '-';
+      updateMtfPreview();
+    }
+
+    function updateMtfPreview(){
+      const principal = 100000;
+      const rate = Number(byId('mtfDailyPct').value || 0);
+      const days = 10;
+      const amount = principal * (rate/100) * days;
+      byId('mtfPreview').textContent = `Example Calculation Preview: ${currency(principal)} × ${rate}% × ${days} days = ${currency(amount)} (stock multiplier applied per MTF trade)`;
+    }
+
+    function setActiveTab(tabId){
+      document.querySelectorAll('#portfolioTabs .tab-btn').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tabId));
+      document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === tabId));
+    }
+
+    async function loadPortfolio(){
+      const q = queryFromFilters();
+      const response = await apiFetch(`/api/portfolio${q ? `?${q}` : ''}`);
+      if(!response.ok){ setBanner('error', 'Failed to load portfolio data'); return; }
+      const data = await response.json();
+      allActiveRows = data.active_positions || [];
+      allClosedRows = data.closed_positions || [];
+      renderSummary(data.summary || {});
+      renderActiveSummary(allActiveRows);
+      renderClosedSummary(allClosedRows);
+      renderStockCheckboxes('active', allActiveRows, 'latest_trade_date');
+      renderStockCheckboxes('closed', allClosedRows, 'closed_at');
+      applySectionStockFilters();
+      renderMtfConfig(data.mtf_config || {});
+      populateSymbolFilter(allActiveRows, allClosedRows);
+      refreshGraphStockOptions();
+      renderGraphLab();
+      setBanner('success', 'Portfolio refreshed');
+    }
+
+    async function loadAnalytics(){
+      const q = queryFromFilters();
+      const response = await apiFetch(`/api/portfolio/analytics${q ? `?${q}` : ''}`);
+      if(!response.ok){ setBanner('error', 'Failed to load analytics'); return; }
+      const data = await response.json();
+      renderAnalytics(data.analytics || {});
+    }
+
+    async function applyFilters(){
+      currentFilters = {
+        fromDate: byId('filterFromDate').value,
+        toDate: byId('filterToDate').value,
+        symbol: byId('filterSymbol').value,
+        type: byId('filterType').value,
+        source: byId('filterSource').value
+      };
+      await loadPortfolio();
+      await loadAnalytics();
+    }
+
+    async function saveMtfConfig(){
+      const payload = {
+        mtf_daily_interest_pct: Number(byId('mtfDailyPct').value || 0),
+        mtf_total_pct_type: byId('mtfTotalType').value,
+        effective_from: byId('mtfEffectiveFrom').value
+      };
+      const response = await apiFetch('/api/portfolio/mtf-config', { method: 'POST', body: JSON.stringify(payload) });
+      const body = await response.json().catch(() => null);
+      if(!response.ok){ setBanner('error', body && body.error ? body.error : 'Failed to save MTF config'); return; }
+      setBanner('success', 'MTF config saved');
+      await loadPortfolio();
+      await loadAnalytics();
+    }
+
+    async function addManualTrade(event){
+      event.preventDefault();
+      const isMtf = byId('manualPositionType').value === 'mtf';
+      const payload = {
+        symbol: byId('manualSymbol').value,
+        side: byId('manualSide').value,
+        quantity: Number(byId('manualQuantity').value || 0),
+        price: Number(byId('manualPrice').value || 0),
+        position_type: byId('manualPositionType').value,
+        trade_source: byId('manualTradeSource').value,
+        charges: Number(byId('manualCharges').value || 0),
+        mtf_multiplier: isMtf ? Number(byId('manualMultiplier').value || 1) : null,
+        executed_at: byId('manualExecutedAt').value ? new Date(byId('manualExecutedAt').value).toISOString() : null
+      };
+
+      const endpoint = editExecutionId ? `/api/portfolio/executions/${editExecutionId}` : '/api/portfolio/executions';
+      const method = editExecutionId ? 'PATCH' : 'POST';
+      const response = await apiFetch(endpoint, { method, body: JSON.stringify(payload) });
+      const body = await response.json().catch(() => null);
+      if(!response.ok){ setBanner('error', body && body.error ? body.error : 'Failed to save trade'); return; }
+
+      byId('manualTradeForm').reset();
+      byId('manualPositionType').value = 'mtf';
+      byId('manualTradeSource').value = 'manual';
+      byId('manualCharges').value = '0';
+      byId('manualMultiplier').value = '1';
+      editExecutionId = null;
+      setManualEditState('');
+      updateManualMultiplierVisibility();
+      if(body && body.mtf_config) renderMtfConfig(body.mtf_config);
+      setBanner('success', method === 'PATCH' ? 'Trade updated successfully' : 'Manual trade added successfully');
+      setActiveTab('overviewTab');
+      await applyFilters();
+    }
+
+    function cancelEditTrade(){
+      editExecutionId = null;
+      byId('manualTradeForm').reset();
+      byId('manualPositionType').value = 'mtf';
+      byId('manualTradeSource').value = 'manual';
+      byId('manualCharges').value = '0';
+      byId('manualMultiplier').value = '1';
+      updateManualMultiplierVisibility();
+      setManualEditState('');
+    }
+
+    async function exportFile(type){
+      if(type === 'pdf'){
+        await exportDashboardPdf();
+        return;
+      }
+      const response = await apiFetch(`/api/portfolio/export?type=${encodeURIComponent(type)}`);
+      if(!response.ok){ setBanner('error', 'Export failed'); return; }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = type === 'excel' ? 'portfolio-export.csv' : 'portfolio-export.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function captureElementToImage(el){
+      const canvas = await html2canvas(el, {
+        scale: Math.min(2, window.devicePixelRatio || 1.5),
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 1366),
+        removeContainer: true
+      });
+      return {
+        canvas,
+        width: canvas.width,
+        height: canvas.height
+      };
+    }
+
+    async function exportDashboardPdf(){
+      try {
+        if(!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF){
+          setBanner('error', 'PDF libraries not loaded. Please refresh and try again.');
+          return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageW = 210;
+        const pageH = 297;
+        const margin = 14;
+        const contentW = pageW - (margin * 2);
+        const sectionGap = 6;
+        let y = margin;
+        let sectionIndex = 0;
+
+        const originalTab = document.querySelector('#portfolioTabs .tab-btn.active')?.dataset.tab || 'overviewTab';
+        document.body.classList.add('pdf-export-mode');
+        const sections = [
+          { tab: 'overviewTab', title: 'Filters', id: 'filtersSection' },
+          { tab: 'overviewTab', title: 'Portfolio Summary', id: 'summarySection' },
+          { tab: 'overviewTab', title: 'Active Positions', id: 'activeSection' },
+          { tab: 'overviewTab', title: 'Closed Positions', id: 'closedSection' },
+          { tab: 'overviewTab', title: 'Charts', id: 'chartsSection' },
+          { tab: 'overviewTab', title: 'Advanced Analytics', id: 'advancedSection' },
+          { tab: 'mtfTab', title: 'MTF Configuration', id: 'mtfConfigSection' },
+          { tab: 'manualTab', title: 'Manual Stock Entry', id: 'manualEntrySection' },
+          { tab: 'manualTab', title: 'Default MTF Values', id: 'manualDefaultsSection' }
+        ];
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(17);
+        doc.text('SmartTrade Portfolio Intelligence Report', margin, y);
+        y += 9;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+        y += 9;
+
+        const skippedSections = [];
+
+        for(const sec of sections){
+          if(sectionIndex > 0){
+            doc.addPage();
+            y = margin;
+          }
+          sectionIndex += 1;
+
+          setActiveTab(sec.tab);
+          await new Promise((resolve) => setTimeout(resolve, 220));
+
+          const el = byId(sec.id);
+          if(!el) continue;
+          let capture;
+          try {
+            capture = await captureElementToImage(el);
+          } catch (sectionError) {
+            console.error('PDF section capture failed:', sec.id, sectionError);
+            skippedSections.push(sec.title);
+            continue;
+          }
+
+          const imgH = (capture.height * contentW) / capture.width;
+          const titleH = 6;
+
+          if(y + titleH + 2 > pageH - margin){
+            doc.addPage();
+            y = margin;
+          }
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(13);
+          doc.text(sec.title, margin, y + titleH - 1);
+          y += titleH;
+
+          if(imgH <= (pageH - margin - y)){
+            doc.addImage(capture.canvas, 'PNG', margin, y, contentW, imgH, undefined, 'FAST');
+            y += imgH + sectionGap;
+            continue;
+          }
+
+          let remainingH = imgH;
+          let sourceYRatio = 0;
+          while(remainingH > 0){
+            const availableH = pageH - margin - y;
+            if(availableH < 24){
+              doc.addPage();
+              y = margin;
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(11);
+              doc.text(`${sec.title} (cont.)`, margin, y + 4);
+              y += 6;
+            }
+
+            const sliceH = Math.min(remainingH, pageH - margin - y);
+            const sx = 0;
+            const sy = Math.floor((sourceYRatio * capture.height) / imgH);
+            const sw = capture.width;
+            const sh = Math.floor((sliceH * capture.height) / imgH);
+
+            const partCanvas = document.createElement('canvas');
+            partCanvas.width = sw;
+            partCanvas.height = sh;
+            const ctx = partCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(capture.canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+            doc.addImage(partCanvas, 'PNG', margin, y, contentW, sliceH, undefined, 'FAST');
+            y += sliceH;
+            remainingH -= sliceH;
+            sourceYRatio += sliceH;
+
+            if(remainingH > 0){
+              doc.addPage();
+              y = margin;
+            }
+          }
+
+          y += sectionGap;
+        }
+
+        setActiveTab(originalTab);
+        document.body.classList.remove('pdf-export-mode');
+        doc.save(`portfolio-report-${new Date().toISOString().slice(0,10)}.pdf`);
+        if(skippedSections.length){
+          setBanner('success', `PDF exported with partial content. Skipped: ${skippedSections.join(', ')}`);
+        } else {
+          setBanner('success', 'PDF exported successfully');
+        }
+      } catch (error) {
+        console.error(error);
+        document.body.classList.remove('pdf-export-mode');
+        setBanner('error', 'Failed to export visual PDF');
+      }
+    }
+
+    function resetFilters(){
+      byId('filterFromDate').value = '';
+      byId('filterToDate').value = '';
+      byId('filterSymbol').value = 'all';
+      byId('filterType').value = 'all';
+      byId('filterSource').value = 'all';
+      currentFilters = { fromDate: '', toDate: '', symbol: 'all', type: 'all', source: 'all' };
+      applyFilters();
+    }
+
+    function configureAutoRefresh(){
+      if(refreshTimer) clearInterval(refreshTimer);
+      if(byId('autoRefreshToggle').checked){
+        refreshTimer = setInterval(() => { applyFilters(); }, 10000);
+      }
+    }
+
+    byId('applyFilterBtn').addEventListener('click', applyFilters);
+    byId('resetFilterBtn').addEventListener('click', resetFilters);
+    byId('saveMtfBtn').addEventListener('click', saveMtfConfig);
+    byId('mtfDailyPct').addEventListener('input', updateMtfPreview);
+    byId('manualPositionType').addEventListener('change', updateManualMultiplierVisibility);
+    byId('cancelEditTradeBtn').addEventListener('click', cancelEditTrade);
+    byId('exportExcelBtn').addEventListener('click', () => exportFile('excel'));
+    byId('exportPdfBtn').addEventListener('click', () => exportFile('pdf'));
+    byId('autoRefreshToggle').addEventListener('change', configureAutoRefresh);
+    byId('activeShowSelectedBtn').addEventListener('click', () => applySelectedStocks('active'));
+    byId('closedShowSelectedBtn').addEventListener('click', () => applySelectedStocks('closed'));
+    byId('activeShowAllBtn').addEventListener('click', () => showAllStocks('active'));
+    byId('closedShowAllBtn').addEventListener('click', () => showAllStocks('closed'));
+    byId('renderGraphBtn').addEventListener('click', renderGraphLab);
+    byId('graphTypeSelect').addEventListener('change', renderGraphLab);
+    byId('graphColorPicker').addEventListener('input', renderGraphLab);
+    byId('graphStockSelect').addEventListener('change', renderGraphLab);
+    byId('graphSelectAllBtn').addEventListener('click', selectAllGraphIndicators);
+    byId('graphClearBtn').addEventListener('click', clearGraphIndicators);
+    byId('applyPortfolioPresetBtn').addEventListener('click', () => applyPortfolioPreset(byId('portfolioPresetSelect').value));
+    byId('savePortfolioPresetBtn').addEventListener('click', savePortfolioCustomPreset);
+    byId('manualTradeForm').addEventListener('submit', addManualTrade);
+    window.addEventListener('resize', () => {
+      Object.keys(CHART_DEFS).forEach((chartId) => {
+        if(chartRefs[chartId]) chartRefs[chartId].resize();
+        const plotlyEl = byId(`${chartId}Plotly`);
+        if(plotlyEl && plotlyEl.style.display !== 'none' && window.Plotly && Plotly.Plots) Plotly.Plots.resize(plotlyEl);
+      });
+      if(window.Plotly && Plotly.Plots){
+        const lab = byId('plotlyGraph');
+        if(lab) Plotly.Plots.resize(lab);
+      }
+    });
+    document.querySelectorAll('#portfolioTabs .tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+    });
+
+    (async function boot(){
+      updateManualMultiplierVisibility();
+      initializeChartControls();
+      ensureGraphControls();
+      await applyFilters();
+      const customPreset = getStoredPortfolioCustomPreset();
+      if(customPreset){
+        ensurePresetOption('portfolioPresetSelect', 'custom_saved', 'Custom Saved');
+        byId('portfolioPresetSelect').value = 'custom_saved';
+      }
+      applyPortfolioPreset(byId('portfolioPresetSelect').value || 'pro_trader');
+    })();
+  </script>
+</body>
+</html>

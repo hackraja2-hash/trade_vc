@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Register</title>
+  <link href="style.css" rel="stylesheet">
+</head>
+<body class="auth-page">
+  <main class="auth-container">
+    <section class="auth-card">
+      <header class="brand">
+        <div class="logo">ST</div>
+        <h1>Create Account</h1>
+        <p class="muted">Join SmartTrade — try demo credentials: sa / sa</p>
+      </header>
+
+      <form id="registerForm" class="form" action="/register" method="post" novalidate>
+        <label>Full name
+          <input name="fullname" id="fullname" type="text" placeholder="Your name" required>
+        </label>
+        <label>Login ID
+          <input name="username" id="regUsername" type="text" placeholder="Choose a login id" required>
+        </label>
+        <label>Email
+          <input name="email" id="regEmail" type="email" placeholder="you@example.com" required>
+        </label>
+        <label>Phone
+          <input name="phone" id="regPhone" type="tel" placeholder="+91 98765 43210" required>
+        </label>
+        <label>Address
+          <textarea name="address" id="regAddress" placeholder="Street, City, State, PIN" rows="3"></textarea>
+        </label>
+        <label>Password
+          <input name="password" id="regPassword" type="password" placeholder="Choose a password" required>
+        </label>
+
+        <button type="submit" class="primary">Create account</button>
+        <p class="muted small">Already have an account? <a href="login.html">Sign in</a></p>
+      </form>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Buy Strategy</title>
+  <link href="style.css" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-inline"><div class="logo">ST</div><span>SmartTrade</span></div>
+    <ul class="nav">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="nse-bse.html">NSE/BSE</a></li>
+      <li><a class="active" href="buy-strategy.html">Buy Strategy</a></li>
+      <li><a href="sell-strategy.html">Sell Strategy</a></li>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a href="admin.html">Admin</a></li>
+      <li><a href="superadmin.html">Superadmin</a></li>
+    </ul>
+    <div class="actions"><span id="userLabel">sa</span> <button id="logoutBtn" class="ghost">Logout</button></div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h2>Buy Strategies</h2>
+      <p class="muted">Create and manage automated buy strategies.</p>
+    </section>
+
+    <section class="card">
+      <h3>New Strategy</h3>
+      <form>
+        <label>Strategy name<input placeholder="Mean reversion — small caps"></label>
+        <label>Symbol(s)<input placeholder="e.g. INFY, TCS"></label>
+        <label>Max allocation (%)<input type="number" min="0" max="100"></label>
+        <div class="row"><button class="primary" type="button">Save Strategy</button></div>
+      </form>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

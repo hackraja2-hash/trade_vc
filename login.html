@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartTrade — Login</title>
+  <link href="style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+  <main class="auth-container">
+    <section class="auth-card">
+      <header class="brand">
+        <div class="logo">D & R</div>
+        <h1>SmartTrade - D & R Enterprise</h1>
+        <p class="muted">Smarter decisions. Faster trades.</p>
+      </header>
+
+      <form id="loginForm" class="form" action="/login" method="post" novalidate>
+        <label>Login ID
+          <input name="username" id="username" type="text" placeholder="Enter login id" autocomplete="username" required>
+        </label>
+        <label>Password
+          <input name="password" id="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+        </label>
+
+        <div class="row space-between">
+          <label class="small"><input type="checkbox" id="remember"> Remember me</label>
+          <a class="link" href="register.html">Create account</a>
+        </div>
+
+        <button type="submit" class="primary">Sign in</button>
+
+        <p class="muted small">Default demo credentials: <strong>sa</strong> / <strong>sa</strong></p>
+        <p id="loginMsg" class="muted small"></p>
+      </form>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
